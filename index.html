@@ -9,14 +9,104 @@
 <meta property="og:description" content="나의 연애 캐릭터를 알아보고, 링크로 공유해서 그 사람과의 궁합까지 확인해보세요 💘" />
 <meta property="og:type" content="website" />
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22%3E%3Ctext y=%22.9em%22 font-size=%2290%22%3E%F0%9F%92%98%3C/text%3E%3C/svg%3E" />
-<link rel="stylesheet" href="./css/style.css" />
+<link rel="stylesheet" href="./style.css" />
 </head>
 <body>
 <div class="wrap">
   <div class="brand"><span class="dot"></span> LOVE DNA</div>
 
   <div class="hero">
-    <div class="emoji-row">💘🧬</div>
+    <div class="mascot-wrap"><svg width="220" height="235" viewBox="0 0 300 320" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <radialGradient id="halo" cx="50%" cy="42%" r="55%">
+      <stop offset="0%" stop-color="#ffd7e6" stop-opacity="0.9"/>
+      <stop offset="100%" stop-color="#ffd7e6" stop-opacity="0"/>
+    </radialGradient>
+    <linearGradient id="robe" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#ff8fb3"/>
+      <stop offset="100%" stop-color="#8f6cf0"/>
+    </linearGradient>
+    <linearGradient id="wingGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#ffffff"/>
+      <stop offset="100%" stop-color="#ffd6e6"/>
+    </linearGradient>
+    <linearGradient id="hairGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#8f6cf0"/>
+      <stop offset="100%" stop-color="#6c4ce0"/>
+    </linearGradient>
+  </defs>
+
+  <!-- halo glow -->
+  <circle cx="150" cy="140" r="140" fill="url(#halo)"/>
+
+  <!-- wings -->
+  <path d="M118 165 C 50 155, 12 110, 24 65 C 68 68, 112 108, 124 162 Z" fill="url(#wingGrad)" stroke="#ffe2ec" stroke-width="2"/>
+  <path d="M182 165 C 250 155, 288 110, 276 65 C 232 68, 188 108, 176 162 Z" fill="url(#wingGrad)" stroke="#ffe2ec" stroke-width="2"/>
+  <path d="M120 158 C 78 148, 52 118, 56 84" fill="none" stroke="#ffc4da" stroke-width="1.5" opacity="0.7"/>
+  <path d="M180 158 C 222 148, 248 118, 244 84" fill="none" stroke="#ffc4da" stroke-width="1.5" opacity="0.7"/>
+
+  <!-- floating sparkles (drawn above wings so they stay visible) -->
+  <g fill="#ff8fb3">
+    <path d="M18 60 l4 10 l10 4 l-10 4 l-4 10 l-4 -10 l-10 -4 l10 -4 z"/>
+  </g>
+  <g fill="#8f6cf0">
+    <path d="M278 78 l3 8 l8 3 l-8 3 l-3 8 l-3 -8 l-8 -3 l8 -3 z"/>
+  </g>
+  <g fill="#ff8fb3" opacity="0.85">
+    <path d="M262 225 l3 7 l7 3 l-7 3 l-3 7 l-3 -7 l-7 -3 l7 -3 z"/>
+  </g>
+
+  <!-- wand (behind raised arm) -->
+  <g>
+    <line x1="222" y1="150" x2="248" y2="70" stroke="#e8b74a" stroke-width="5" stroke-linecap="round"/>
+    <!-- dna helix on wand -->
+    <path d="M234 130 C 244 122, 224 112, 234 104 C 244 96, 224 86, 234 78" fill="none" stroke="#6c4ce0" stroke-width="3" stroke-linecap="round"/>
+    <path d="M234 130 C 224 122, 244 112, 234 104 C 224 96, 244 86, 234 78" fill="none" stroke="#e8447d" stroke-width="3" stroke-linecap="round"/>
+    <!-- heart top -->
+    <path d="M248 58 C 244 50, 232 52, 233 62 C 234 70, 248 78, 248 78 C 248 78, 262 70, 263 62 C 264 52, 252 50, 248 58 Z" fill="#ff5f8f" stroke="#e8447d" stroke-width="1.5"/>
+  </g>
+
+  <!-- body / robe -->
+  <path d="M105 190 C 105 155, 125 140, 150 140 C 175 140, 195 155, 195 190 L 205 260 C 205 285, 175 300, 150 300 C 125 300, 95 285, 95 260 Z" fill="url(#robe)"/>
+  <!-- heart emblem -->
+  <path d="M150 195 C 146 188, 136 190, 137 199 C 138 207, 150 216, 150 216 C 150 216, 162 207, 163 199 C 164 190, 154 188, 150 195 Z" fill="#fff" opacity="0.9"/>
+
+  <!-- arms -->
+  <path d="M108 175 C 90 185, 82 205, 88 225" fill="none" stroke="#ffd9c2" stroke-width="16" stroke-linecap="round"/>
+  <path d="M198 172 C 212 165, 218 158, 222 150" fill="none" stroke="#ffd9c2" stroke-width="16" stroke-linecap="round"/>
+
+  <!-- head -->
+  <circle cx="150" cy="110" r="58" fill="#ffdcc4"/>
+
+  <!-- ears blush covered by hair mostly, cheeks -->
+  <circle cx="115" cy="122" r="9" fill="#ff9fb8" opacity="0.55"/>
+  <circle cx="185" cy="122" r="9" fill="#ff9fb8" opacity="0.55"/>
+
+  <!-- eyes -->
+  <g>
+    <ellipse cx="130" cy="112" rx="6.5" ry="8.5" fill="#2c1f2a"/>
+    <ellipse cx="170" cy="112" rx="6.5" ry="8.5" fill="#2c1f2a"/>
+    <circle cx="132.5" cy="108" r="2.2" fill="#fff"/>
+    <circle cx="172.5" cy="108" r="2.2" fill="#fff"/>
+  </g>
+  <!-- smile -->
+  <path d="M138 130 Q150 140 162 130" fill="none" stroke="#c76a4e" stroke-width="3" stroke-linecap="round"/>
+
+  <!-- hair: soft bangs + side pieces, leaving face and upper temples open -->
+  <path d="M95 96 C 90 55, 118 28, 150 28 C 182 28, 210 55, 205 96
+           C 199 72, 186 60, 150 60 C 114 60, 101 72, 95 96 Z" fill="url(#hairGrad)"/>
+  <path d="M97 70 C 90 84, 88 100, 92 118 C 100 108, 104 90, 106 74 Z" fill="url(#hairGrad)"/>
+  <path d="M203 70 C 210 84, 212 100, 208 118 C 200 108, 196 90, 194 74 Z" fill="url(#hairGrad)"/>
+  <path d="M150 58 C 140 56, 128 58, 120 64" fill="none" stroke="#7d5aea" stroke-width="2" opacity="0.6"/>
+  <path d="M150 58 C 160 56, 172 58, 180 64" fill="none" stroke="#7d5aea" stroke-width="2" opacity="0.6"/>
+  <!-- ahoge curl with heart -->
+  <path d="M150 30 C 140 14, 150 2, 162 6 C 172 9, 168 22, 156 28" fill="none" stroke="url(#hairGrad)" stroke-width="6" stroke-linecap="round"/>
+  <path d="M162 4 C 159 -1, 152 0, 153 6 C 154 11, 162 16, 162 16 C 162 16, 170 11, 171 6 C 172 0, 165 -1, 162 4 Z" fill="#ff5f8f"/>
+
+  <!-- feet -->
+  <ellipse cx="128" cy="303" rx="16" ry="8" fill="#6c4ce0"/>
+  <ellipse cx="172" cy="303" rx="16" ry="8" fill="#6c4ce0"/>
+</svg></div>
     <h1>나의 연애 DNA는?</h1>
     <p>15초 만에 알아보는 나만의 연애 캐릭터.<br/>링크로 공유해서 그 사람과의 궁합까지 확인해보세요.</p>
   </div>
