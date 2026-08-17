@@ -175,27 +175,31 @@
   // ---- compatibility scoring between two stat sets ----
   function closeness(a, b) { return 100 - Math.abs(a - b); }
   function clamp(v) { return Math.max(0, Math.min(100, Math.round(v))); }
+  function clamp2(v) { return Math.max(0, Math.min(100, Math.round(v * 100) / 100)); }
 
   function computeCompatibility(A, B) {
-    var attraction = 0.4 * closeness(A.ae, B.ae) + 0.3 * closeness(A.es, B.es) + 0.3 * (100 - closeness(A.in, B.in));
-    var conversation = 0.6 * (100 - (A.ca + B.ca) / 2) + 0.4 * closeness(A.es, B.es);
-    var affection = closeness(A.ae, B.ae);
-    var lifestyle = 0.5 * closeness(A.in, B.in) + 0.5 * closeness(A.cm, B.cm);
-    var conflictRisk = 0.4 * ((A.jl + B.jl) / 2) + 0.3 * (100 - closeness(A.ca, B.ca)) + 0.3 * (100 - closeness(A.es, B.es));
-    var longTerm = 0.5 * ((A.cm + B.cm) / 2) + 0.5 * closeness(A.cm, B.cm);
+    var attractionRaw = 0.4 * closeness(A.ae, B.ae) + 0.3 * closeness(A.es, B.es) + 0.3 * (100 - closeness(A.in, B.in));
+    var conversationRaw = 0.6 * (100 - (A.ca + B.ca) / 2) + 0.4 * closeness(A.es, B.es);
+    var affectionRaw = closeness(A.ae, B.ae);
+    var lifestyleRaw = 0.5 * closeness(A.in, B.in) + 0.5 * closeness(A.cm, B.cm);
+    var conflictRiskRaw = 0.4 * ((A.jl + B.jl) / 2) + 0.3 * (100 - closeness(A.ca, B.ca)) + 0.3 * (100 - closeness(A.es, B.es));
+    var longTermRaw = 0.5 * ((A.cm + B.cm) / 2) + 0.5 * closeness(A.cm, B.cm);
 
     var scores = {
-      attraction: clamp(attraction),
-      conversation: clamp(conversation),
-      affection: clamp(affection),
-      lifestyle: clamp(lifestyle),
-      conflictRisk: clamp(conflictRisk),
-      longTerm: clamp(longTerm),
+      attraction: clamp(attractionRaw),
+      conversation: clamp(conversationRaw),
+      affection: clamp(affectionRaw),
+      lifestyle: clamp(lifestyleRaw),
+      conflictRisk: clamp(conflictRiskRaw),
+      longTerm: clamp(longTermRaw),
     };
-    var overall = clamp(
-      (scores.attraction + scores.conversation + scores.affection + scores.lifestyle + (100 - scores.conflictRisk) + scores.longTerm) / 6
-    );
-    return { scores: scores, overall: overall };
+    var overallRaw = (attractionRaw + conversationRaw + affectionRaw + lifestyleRaw + (100 - conflictRiskRaw) + longTermRaw) / 6;
+    var overall = clamp(overallRaw);
+    // 2-decimal-precision score, computed from the un-rounded sub-scores —
+    // used for the global leaderboard ranking so ties are rare even between
+    // couples whose rounded display score ("72점") looks identical
+    var overallPrecise = clamp2(overallRaw);
+    return { scores: scores, overall: overall, overallPrecise: overallPrecise };
   }
 
   // ---- deterministic "risk signal" teasers shown BEFORE payment ----
