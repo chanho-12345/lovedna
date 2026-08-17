@@ -25,6 +25,43 @@
     var ua = navigator.userAgent || "";
     return /KAKAOTALK|FBAN|FBAV|FB_IAB|Instagram|NAVER\(inapp|Line\//i.test(ua);
   }
+  function isAndroid() {
+    return /Android/i.test(navigator.userAgent || "");
+  }
+
+  // Best-effort "open this page in real Chrome" jump for Android in-app
+  // browsers (KakaoTalk etc.), using the same intent:// scheme Chrome's own
+  // docs recommend. Not guaranteed to work in every host app's WebView, and
+  // there is no equivalent trick on iOS — Apple blocks it entirely — so this
+  // is offered as a one-tap try, not a certainty.
+  function tryOpenInChrome() {
+    var withoutScheme = location.href.replace(/^https?:\/\//, "");
+    location.href = "intent://" + withoutScheme + "#Intent;scheme=https;package=com.android.chrome;end";
+  }
+
+  function showBrowserUpgradeBanner() {
+    var existing = document.getElementById("browserUpgradeBanner");
+    if (existing) return;
+    var el = document.createElement("div");
+    el.id = "browserUpgradeBanner";
+    el.className = "push-help-banner";
+    if (isAndroid()) {
+      el.innerHTML =
+        '<div>카카오톡 등 인앱 브라우저는 알림을 지원 안 해요.</div>' +
+        '<button class="btn btn-primary btn-sm" id="openChromeBtn" style="margin-top:8px;">Chrome에서 열기</button>' +
+        '<button class="btn btn-ghost btn-sm" id="dismissBrowserBanner" style="margin-top:8px;">닫기</button>';
+    } else {
+      el.innerHTML =
+        '<div>카카오톡 등 인앱 브라우저는 알림을 지원 안 해요.<br/>우측 상단 메뉴에서 \'다른 브라우저로 열기\'를 눌러주세요.</div>' +
+        '<button class="btn btn-ghost btn-sm" id="dismissBrowserBanner" style="margin-top:8px;">닫기</button>';
+    }
+    document.body.appendChild(el);
+    var chromeBtn = document.getElementById("openChromeBtn");
+    if (chromeBtn) chromeBtn.addEventListener("click", tryOpenInChrome);
+    document.getElementById("dismissBrowserBanner").addEventListener("click", function () {
+      el.remove();
+    });
+  }
 
   if (!dCode) {
     app.innerHTML = emptyState();
@@ -62,10 +99,18 @@
     return (name || "친구") + "님의 유형은 [" + ch.name + "]예요! 연인이든 썸이든 친구든, 케미 궁합이 궁금하면 👉 테스트 시작하기";
   }
 
-  function buildInviteUrl(code) {
+  function buildInviteUrl(code, score) {
     // routes through /api/invite so KakaoTalk / iMessage link previews can
-    // show a per-person title instead of a generic one (see api/invite.js)
-    return location.origin + "/api/invite?p=" + encodeURIComponent(code);
+    // show a per-person title instead of a generic one (see api/invite.js).
+    // optional score = the sharer's existing compat score, used to frame
+    // the invite as a challenge ("beat our score") for the recipient.
+    var url = location.origin + "/api/invite?p=" + encodeURIComponent(code);
+    if (typeof score === "number" && !isNaN(score)) url += "&s=" + encodeURIComponent(score.toFixed(2));
+    return url;
+  }
+
+  function buildChallengeText(name, score) {
+    return (name || "친구") + "님과의 궁합 점수는 " + score.toFixed(2) + "점! 나랑은 몇 점일까? 👉 도전하고 확인하기";
   }
 
   // ---- Web Push (rank alerts) ----
@@ -85,7 +130,7 @@
   function subscribeToRankAlerts(pairId, nameA, nameB, btn) {
     if (!("serviceWorker" in navigator) || !("PushManager" in window)) {
       if (isInAppBrowser()) {
-        toast("카카오톡 등 인앱 브라우저는 알림을 지원 안 해요. 우측 상단 메뉴에서 '다른 브라우저로 열기'를 눌러주세요.");
+        showBrowserUpgradeBanner();
       } else {
         toast("이 브라우저는 알림 기능을 지원하지 않아요. (Chrome, Safari 등 최신 브라우저를 이용해주세요)");
       }
@@ -253,10 +298,11 @@
       '<div class="locked-note">🔒 결제 후 즉시 확인 가능</div>' +
       "</div>" +
       "</div>" +
-      '<div class="section-title">🔗 내 캐릭터로 다른 친구도 초대하기</div>' +
+      '<div class="section-title">🔥 우리 궁합 점수, 자랑하고 도전시키기</div>' +
       '<div class="card" style="text-align:center;">' +
-      '<p style="font-size:13.5px;color:var(--ink-2);margin-top:0;">' + escapeHtml(me.n || "나") + '님의 [' + chA.name + '] 결과로, 다른 친구나 썸 상대에게도 보내보세요.<br/>친구도 궁합 테스트하고 전체 순위표에 함께 도전해보세요.</p>' +
-      '<button class="btn btn-primary" id="inviteFriendBtn">🔗 내 링크로 친구 초대하기</button>' +
+      '<div class="challenge-score">' + compat.overallPrecise.toFixed(2) + '점</div>' +
+      '<p style="font-size:13.5px;color:var(--ink-2);margin:6px 0 14px;">이 점수, 다른 친구들도 넘을 수 있을까요?<br/>링크 보내서 도전시켜보세요!</p>' +
+      '<button class="btn btn-primary" id="inviteFriendBtn">🔥 도전장 보내기</button>' +
       '</div>' +
       '<div class="btn-row" style="margin-top:20px;"><a class="btn btn-ghost" href="./test.html">🔁 새로 테스트</a><button class="btn btn-ghost" id="shareResultBtn">이 결과 공유</button></div>' +
       '<p class="footer-note">본 테스트는 재미를 위한 콘텐츠이며 과학적 근거를 기반으로 하지 않습니다.</p>';
@@ -265,7 +311,7 @@
       unlockReport(me, chA, partner, chB, compat, signals);
     });
     document.getElementById("inviteFriendBtn").addEventListener("click", function () {
-      openShareSheet(buildInviteUrl(dCode), buildInviteText(me.n, chA), onShareDone);
+      openShareSheet(buildInviteUrl(dCode, compat.overallPrecise), buildChallengeText(me.n, compat.overallPrecise), onShareDone);
     });
     document.getElementById("shareResultBtn").addEventListener("click", function () {
       openShareSheet(location.href, "우리 궁합 결과 확인해봐 💘", onShareDone);
@@ -479,17 +525,18 @@
 
         if (ch === "kakao") {
           if (kakaoReady && window.Kakao && window.Kakao.Share) {
-            window.Kakao.Share.sendDefault({
-              objectType: "feed",
-              content: {
-                title: "LOVE DNA",
-                description: text,
-                imageUrl: location.origin + "/favicon.png",
+            try {
+              // "text" template needs no hosted image, so it fails less
+              // often than "feed" — just a title/description-style message
+              window.Kakao.Share.sendDefault({
+                objectType: "text",
+                text: "💘 " + text,
                 link: { mobileWebUrl: url, webUrl: url },
-              },
-              buttons: [{ title: "테스트 하러가기", link: { mobileWebUrl: url, webUrl: url } }],
-            });
-            if (onDone) onDone();
+              });
+              if (onDone) onDone();
+            } catch (e) {
+              toast("카카오톡 공유에 실패했어요. 다른 방법으로 보내주세요 🙏");
+            }
           } else {
             toast("카카오톡 공유는 곧 열려요! 지금은 다른 방법으로 보내주세요 🙏");
           }
