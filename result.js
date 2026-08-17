@@ -37,6 +37,10 @@
     });
   }
 
+  function buildInviteText(name, ch) {
+    return (name || "친구") + "님의 유형은 [" + ch.name + "]예요! 연인이든 썸이든 친구든, 케미 궁합이 궁금하면 👉 테스트 시작하기";
+  }
+
   function statBarsHtml(stats) {
     return window.LoveDNA.STAT_KEYS
       .map(function (k) {
@@ -74,7 +78,7 @@
       '<div class="card">' + radarSvg + '<div style="margin-top:14px;">' + statBarsHtml(me.s) + "</div></div>" +
       '<div class="section-title">💌 링크로 궁합 확인하기</div>' +
       '<div class="card" style="text-align:center;">' +
-      '<p style="font-size:14px;color:var(--ink-2);margin-top:0;">이 링크를 그 사람에게 보내보세요.<br/>상대방이 테스트를 마치면 둘의 궁합이 바로 나와요.</p>' +
+      '<p style="font-size:14px;color:var(--ink-2);margin-top:0;">연인이든 썸이든 친구든, 이 링크를 보내보세요.<br/>상대방이 테스트를 마치면 둘의 궁합이 바로 나와요.</p>' +
       '<button class="btn btn-primary" id="shareBtn">궁합 테스트 링크 공유하기 →</button>' +
       '<div class="btn-row"><button class="btn btn-ghost" id="saveCardBtn">🖼️ 캐릭터 카드 저장</button><a class="btn btn-ghost" href="./test.html">🔁 다시 테스트</a></div>' +
       "</div>" +
@@ -82,7 +86,7 @@
 
     document.getElementById("shareBtn").addEventListener("click", function () {
       var url = location.origin + location.pathname.replace(/result\.html$/, "test.html") + "?partner=" + encodeURIComponent(dCode);
-      shareOrCopy(url, (me.n || "나") + "님의 LOVE DNA 궁합테스트 초대장 💘");
+      shareOrCopy(url, buildInviteText(me.n, ch));
     });
     document.getElementById("saveCardBtn").addEventListener("click", function () {
       drawCard(me, ch);
@@ -163,11 +167,20 @@
       '<div class="locked-note">🔒 결제 후 즉시 확인 가능</div>' +
       "</div>" +
       "</div>" +
-      '<div class="btn-row" style="margin-top:20px;"><a class="btn btn-ghost" href="./test.html">🔁 나도 테스트하기</a><button class="btn btn-ghost" id="shareResultBtn">공유하기</button></div>' +
+      '<div class="section-title">🔗 내 캐릭터로 다른 친구도 초대하기</div>' +
+      '<div class="card" style="text-align:center;">' +
+      '<p style="font-size:13.5px;color:var(--ink-2);margin-top:0;">' + escapeHtml(me.n || "나") + '님의 [' + chA.name + '] 결과로, 다른 친구나 썸 상대에게도 보내보세요.</p>' +
+      '<button class="btn btn-primary" id="inviteFriendBtn">🔗 내 링크로 친구 초대하기</button>' +
+      '</div>' +
+      '<div class="btn-row" style="margin-top:20px;"><a class="btn btn-ghost" href="./test.html">🔁 새로 테스트</a><button class="btn btn-ghost" id="shareResultBtn">이 결과 공유</button></div>' +
       '<p class="footer-note">본 테스트는 재미를 위한 콘텐츠이며 과학적 근거를 기반으로 하지 않습니다.</p>';
 
     document.getElementById("unlockBtn").addEventListener("click", function () {
       unlockReport(me, chA, partner, chB, compat, signals);
+    });
+    document.getElementById("inviteFriendBtn").addEventListener("click", function () {
+      var url = location.origin + location.pathname.replace(/result\.html$/, "test.html") + "?partner=" + encodeURIComponent(dCode);
+      shareOrCopy(url, buildInviteText(me.n, chA));
     });
     document.getElementById("shareResultBtn").addEventListener("click", function () {
       shareOrCopy(location.href, "우리 궁합 결과 확인해봐 💘");
