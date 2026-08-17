@@ -47,6 +47,57 @@
     return location.origin + "/api/invite?p=" + encodeURIComponent(code);
   }
 
+  // ---- Web Push (rank alerts) ----
+  // Public VAPID key — not a secret, safe to keep in client code. Must match
+  // the one hardcoded in api/notify-rank.js.
+  var VAPID_PUBLIC_KEY = "BMMcNDB9qakIvKU1We5XC-1mkuA6bccFMCX7IQU3A31iSaIQ6I1aPwDT-0iFIKDXydahmZeHUYEOrqGIY2draAw";
+
+  function urlBase64ToUint8Array(base64String) {
+    var padding = "=".repeat((4 - (base64String.length % 4)) % 4);
+    var base64 = (base64String + padding).replace(/-/g, "+").replace(/_/g, "/");
+    var rawData = atob(base64);
+    var outputArray = new Uint8Array(rawData.length);
+    for (var i = 0; i < rawData.length; ++i) outputArray[i] = rawData.charCodeAt(i);
+    return outputArray;
+  }
+
+  function subscribeToRankAlerts(pairId, nameA, nameB, btn) {
+    if (!("serviceWorker" in navigator) || !("PushManager" in window)) {
+      toast("이 브라우저는 알림 기능을 지원하지 않아요.");
+      return;
+    }
+    btn.disabled = true;
+    btn.textContent = "설정 중...";
+    navigator.serviceWorker
+      .register("/sw.js")
+      .then(function (reg) {
+        return Notification.requestPermission().then(function (perm) {
+          if (perm !== "granted") throw new Error("permission_denied");
+          return reg.pushManager.subscribe({
+            userVisibleOnly: true,
+            applicationServerKey: urlBase64ToUint8Array(VAPID_PUBLIC_KEY),
+          });
+        });
+      })
+      .then(function (sub) {
+        return fetch("./api/subscribe", {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({ pairId: pairId, nameA: nameA, nameB: nameB, subscription: sub }),
+        });
+      })
+      .then(function () {
+        btn.textContent = "🔔 알림 신청 완료!";
+        toast("1~3등이면 하루에 한 번 알림을 보내드릴게요!");
+      })
+      .catch(function (err) {
+        btn.disabled = false;
+        btn.textContent = "🔔 순위 알림 받기";
+        if (err && err.message === "permission_denied") toast("알림 권한을 허용해주세요.");
+        else toast("알림 설정에 실패했어요.");
+      });
+  }
+
   function statBarsHtml(stats) {
     return window.LoveDNA.STAT_KEYS
       .map(function (k) {
@@ -91,7 +142,7 @@
       '<p class="footer-note">본 테스트는 재미를 위한 콘텐츠이며 과학적 근거를 기반으로 하지 않습니다.</p>';
 
     document.getElementById("shareBtn").addEventListener("click", function () {
-      shareOrCopy(buildInviteUrl(dCode), buildInviteText(me.n, ch), handleShareSuccess);
+      shareOrCopy(buildInviteUrl(dCode), buildInviteText(me.n, ch), onShareDone);
     });
     document.getElementById("saveCardBtn").addEventListener("click", function () {
       drawCard(me, ch);
@@ -110,7 +161,6 @@
     var chB = window.LoveDNA.assignCharacter(partner.s);
     var compat = window.LoveDNA.computeCompatibility(me.s, partner.s);
     var signals = window.LoveDNA.computeRiskSignals(me.s, partner.s, compat);
-    var room = me.room || partner.room || "";
     var pairId = [dCode, pCode].sort().join("_");
 
     var radarSvg = window.LoveDNARadar.renderRadar({
@@ -157,7 +207,7 @@
       "</div>" +
       '<div class="score-big"><div class="num">' + compat.overall + "</div><div class=\"cap\">종합 궁합 점수 · " + pctToClosenessLabel(compat.overall) + "</div></div>" +
       "</div>" +
-      (room ? '<div class="section-title">🏆 우리 커플 순위</div><div class="card" id="leaderboardSection"><div class="lb-loading">순위 불러오는 중...</div></div>' : "") +
+      '<div class="section-title">🏆 전체 커플 순위</div><div class="card" id="leaderboardSection"><div class="lb-loading">순위 불러오는 중...</div></div>' +
       '<div class="section-title">🗺️ 관계 지도</div>' +
       '<div class="card">' + radarSvg + "</div>" +
       '<div class="section-title">📈 세부 궁합 점수</div>' +
@@ -169,16 +219,14 @@
       (signals.length > 1 ? '<div class="signal-more">신호가 <b>1개 더</b> 있어요 🔒</div>' : "") +
       '<div class="locked-teaser">' +
       '<div class="locked-teaser-text">왜 이 신호가 나타났는지, 이 시기에 무엇을 조심해야 하는지<br/>두 사람의 기운과 데이터를 정밀 분석한 리포트에서 확인하세요</div>' +
-      '<div class="price-row" id="priceRow"><span class="price-tag" id="priceTag">3,900원</span></div>' +
-      '<div class="share-progress" id="shareProgress"></div>' +
+      '<div class="price-row" id="priceRow"><span class="price-tag" id="priceTag">2,900원</span></div>' +
       '<button class="btn btn-primary unlock-btn" id="unlockBtn">지금 정밀 분석 결과 확인하기</button>' +
-      '<button class="btn btn-ghost btn-sm" id="shareForDiscountBtn" style="margin-top:8px;">🔗 링크 공유하고 할인받기</button>' +
-      '<div class="locked-note">🔒 결제 후 즉시 확인 가능 · 공유 3회 시 무료</div>' +
+      '<div class="locked-note">🔒 결제 후 즉시 확인 가능</div>' +
       "</div>" +
       "</div>" +
       '<div class="section-title">🔗 내 캐릭터로 다른 친구도 초대하기</div>' +
       '<div class="card" style="text-align:center;">' +
-      '<p style="font-size:13.5px;color:var(--ink-2);margin-top:0;">' + escapeHtml(me.n || "나") + '님의 [' + chA.name + '] 결과로, 다른 친구나 썸 상대에게도 보내보세요.<br/>공유할 때마다 내 리포트 할인이 쌓여요.</p>' +
+      '<p style="font-size:13.5px;color:var(--ink-2);margin-top:0;">' + escapeHtml(me.n || "나") + '님의 [' + chA.name + '] 결과로, 다른 친구나 썸 상대에게도 보내보세요.<br/>친구도 궁합 테스트하고 전체 순위표에 함께 도전해보세요.</p>' +
       '<button class="btn btn-primary" id="inviteFriendBtn">🔗 내 링크로 친구 초대하기</button>' +
       '</div>' +
       '<div class="btn-row" style="margin-top:20px;"><a class="btn btn-ghost" href="./test.html">🔁 새로 테스트</a><button class="btn btn-ghost" id="shareResultBtn">이 결과 공유</button></div>' +
@@ -188,20 +236,16 @@
       unlockReport(me, chA, partner, chB, compat, signals);
     });
     document.getElementById("inviteFriendBtn").addEventListener("click", function () {
-      shareOrCopy(buildInviteUrl(dCode), buildInviteText(me.n, chA), handleShareSuccess);
+      shareOrCopy(buildInviteUrl(dCode), buildInviteText(me.n, chA), onShareDone);
     });
     document.getElementById("shareResultBtn").addEventListener("click", function () {
-      shareOrCopy(location.href, "우리 궁합 결과 확인해봐 💘", handleShareSuccess);
+      shareOrCopy(location.href, "우리 궁합 결과 확인해봐 💘", onShareDone);
     });
-    document.getElementById("shareForDiscountBtn").addEventListener("click", function () {
-      shareOrCopy(buildInviteUrl(dCode), buildInviteText(me.n, chA), handleShareSuccess);
-    });
-    updatePriceUI();
 
-    if (room) submitAndRenderLeaderboard(room, pairId, me, chA, partner, chB, compat.overall);
+    submitAndRenderLeaderboard(pairId, me, chA, partner, chB, compat.overallPrecise);
   }
 
-  function submitAndRenderLeaderboard(room, pairId, me, chA, partner, chB, score) {
+  function submitAndRenderLeaderboard(pairId, me, chA, partner, chB, score) {
     var box = document.getElementById("leaderboardSection");
     if (!box) return;
 
@@ -209,17 +253,17 @@
       method: "POST",
       headers: { "content-type": "application/json" },
       body: JSON.stringify({
-        room: room, pairId: pairId, score: score,
+        pairId: pairId, score: score,
         nameA: me.n, charA: chA.name, nameB: partner.n, charB: chB.name,
       }),
     })
       .then(function () {
-        return fetch("./api/leaderboard?room=" + encodeURIComponent(room) + "&pair=" + encodeURIComponent(pairId));
+        return fetch("./api/leaderboard?pair=" + encodeURIComponent(pairId));
       })
       .then(function (r) { return r.json().then(function (data) { return { ok: r.ok, data: data }; }); })
       .then(function (result) {
         if (!result.ok) { renderLeaderboardError(box, result.data); return; }
-        renderLeaderboard(box, result.data, pairId);
+        renderLeaderboard(box, result.data, pairId, me.n, partner.n);
       })
       .catch(function () {
         renderLeaderboardError(box, {});
@@ -232,10 +276,10 @@
     box.innerHTML = '<div class="lb-loading">' + escapeHtml(msg) + "</div>";
   }
 
-  function renderLeaderboard(box, data, myPairId) {
+  function renderLeaderboard(box, data, myPairId, nameA, nameB) {
     var top = (data && data.top) || [];
     if (!top.length) {
-      box.innerHTML = '<div class="lb-loading">아직 이 링크로 궁합을 본 커플이 없어요. 첫 번째가 되어보세요!</div>';
+      box.innerHTML = '<div class="lb-loading">아직 궁합을 본 커플이 없어요. 첫 번째가 되어보세요!</div>';
       return;
     }
     var medals = ["🥇", "🥈", "🥉"];
@@ -246,7 +290,7 @@
           '<div class="lb-row' + (isMe ? " lb-row-me" : "") + '">' +
           '<div class="lb-rank">' + (medals[i] || i + 1 + "위") + "</div>" +
           '<div class="lb-names">' + escapeHtml(row.nameA) + "(" + escapeHtml(row.charA) + ") × " + escapeHtml(row.nameB) + "(" + escapeHtml(row.charB) + ")" + (isMe ? " <b>← 우리</b>" : "") + "</div>" +
-          '<div class="lb-score">' + row.score + "점</div>" +
+          '<div class="lb-score">' + Number(row.score).toFixed(2) + "점</div>" +
           "</div>"
         );
       })
@@ -262,43 +306,19 @@
     box.innerHTML =
       '<div class="lb-list">' + rowsHtml + "</div>" +
       rankNote +
-      '<div class="lb-total">이 링크에서 시작된 커플 총 ' + (data.total || top.length) + "쌍 중</div>";
+      '<div class="lb-total">LOVE DNA 전체 커플 총 ' + (data.total || top.length) + "쌍 중</div>" +
+      '<button class="btn btn-ghost btn-sm" id="rankAlertBtn" style="margin-top:10px;">🔔 순위 알림 받기</button>';
+
+    var alertBtn = document.getElementById("rankAlertBtn");
+    if (alertBtn) {
+      alertBtn.addEventListener("click", function () {
+        subscribeToRankAlerts(myPairId, nameA, nameB, alertBtn);
+      });
+    }
   }
 
-  // ---- share-to-unlock reward: no backend, so we can't verify a friend
-  // actually completed the test — instead we count the sharer's own
-  // *completed* shares (navigator.share() promise actually resolved, not
-  // just the button being clicked) and scale their own report discount.
-  function getShareCount() {
-    try { return parseInt(localStorage.getItem("lovedna_share_count") || "0", 10) || 0; } catch (e) { return 0; }
-  }
-  function incrementShareCount() {
-    var c = getShareCount() + 1;
-    try { localStorage.setItem("lovedna_share_count", String(c)); } catch (e) {}
-    return c;
-  }
-  function handleShareSuccess() {
-    var count = incrementShareCount();
-    if (count >= 3) toast("🎉 3회 공유 완료! 리포트가 무료로 열려요");
-    else toast("공유 완료! (" + count + "/3) " + (3 - count) + "번 더 공유하면 리포트 무료");
-    updatePriceUI();
-  }
-  function updatePriceUI() {
-    var tag = document.getElementById("priceTag");
-    var progress = document.getElementById("shareProgress");
-    if (!tag) return;
-    var count = getShareCount();
-    if (count >= 3) {
-      tag.innerHTML = '<span class="price-strike">3,900원</span> <span class="price-now">무료</span> <span class="price-discount-badge">3회 공유 달성</span>';
-    } else if (count >= 1) {
-      var price = count >= 2 ? "1,900원" : "2,900원";
-      tag.innerHTML = '<span class="price-strike">3,900원</span> <span class="price-now">' + price + '</span> <span class="price-discount-badge">공유 ' + count + '회 할인</span>';
-    } else {
-      tag.textContent = "3,900원";
-    }
-    if (progress) {
-      progress.textContent = count >= 3 ? "" : "공유 " + count + "/3 · " + (3 - count) + "번 더 공유하면 무료예요";
-    }
+  function onShareDone() {
+    toast("공유됐어요! 💌");
   }
 
   function unlockReport(me, chA, partner, chB, compat, signals) {
