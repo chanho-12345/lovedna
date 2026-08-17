@@ -150,7 +150,7 @@
       '<div class="section-title">📈 세부 궁합 점수</div>' +
       '<div class="card">' + subRows + '<p style="font-size:12px;color:var(--ink-muted);margin:12px 0 0;">* 갈등 위험도는 낮을수록 좋아요</p></div>' +
       '<div class="section-title">🔒 심층 관계 리포트</div>' +
-      '<div class="locked">' +
+      '<div class="locked" id="lockedSection">' +
       "<ul>" +
       "<li>두 사람의 반복되는 갈등 패턴</li>" +
       "<li>서로에게 끌리는 진짜 이유</li>" +
@@ -165,11 +165,74 @@
       '<p class="footer-note">본 테스트는 재미를 위한 콘텐츠이며 과학적 근거를 기반으로 하지 않습니다.</p>';
 
     document.getElementById("unlockBtn").addEventListener("click", function () {
-      toast("결제 기능은 다음 업데이트에서 연결될 예정이에요 🙏");
+      unlockReport(me, chA, partner, chB, compat);
     });
     document.getElementById("shareResultBtn").addEventListener("click", function () {
       shareOrCopy(location.href, "우리 궁합 결과 확인해봐 💘");
     });
+  }
+
+  function unlockReport(me, chA, partner, chB, compat) {
+    var box = document.getElementById("lockedSection");
+    box.innerHTML = '<div style="text-align:center;padding:10px 0;"><div style="font-size:32px;">💌</div><div style="font-weight:700;margin-top:6px;">AI가 두 사람의 리포트를 쓰는 중...</div></div>';
+
+    var payload = {
+      me: { n: me.n, mbti: me.mbti, s: me.s, characterName: chA.name },
+      partner: { n: partner.n, mbti: partner.mbti, s: partner.s, characterName: chB.name },
+      compat: compat,
+    };
+
+    fetch("./api/report", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify(payload),
+    })
+      .then(function (r) { return r.json().then(function (data) { return { ok: r.ok, data: data }; }); })
+      .then(function (result) {
+        if (!result.ok) {
+          renderReportError(box, result.data);
+          return;
+        }
+        renderReport(box, result.data.report);
+      })
+      .catch(function (err) {
+        renderReportError(box, { message: err.message });
+      });
+  }
+
+  function renderReportError(box, data) {
+    var msg = "리포트를 불러오지 못했어요.";
+    if (data && data.error === "server_not_configured") msg = "서버에 아직 AI 연결이 설정되지 않았어요. (관리자: Vercel에 ANTHROPIC_API_KEY를 등록해주세요)";
+    box.innerHTML =
+      '<div style="text-align:center;padding:10px 0;">' +
+      '<div style="font-size:28px;">😥</div>' +
+      '<div style="margin-top:6px;color:var(--ink-2);font-size:14px;">' + escapeHtml(msg) + "</div>" +
+      '<button class="btn btn-ghost btn-sm" id="retryUnlock" style="margin-top:12px;">다시 시도</button>' +
+      "</div>";
+  }
+
+  function renderReport(box, report) {
+    var sections = [
+      ["conflict_pattern", "🌀 반복되는 갈등 패턴"],
+      ["attraction_reason", "✨ 서로에게 끌리는 이유"],
+      ["affection_style_gap", "💌 원하는 애정표현 방식 차이"],
+      ["fight_behavior", "🥊 싸웠을 때 행동 패턴"],
+      ["who_tires_first", "🔋 먼저 지치는 사람은?"],
+      ["long_term_outlook", "🔭 장기 연애 가능성"],
+    ];
+    box.className = "card";
+    box.id = "";
+    box.innerHTML = sections
+      .map(function (s) {
+        var text = report && report[s[0]] ? report[s[0]] : "-";
+        return (
+          '<div style="margin-bottom:16px;">' +
+          '<div style="font-weight:800;font-size:14.5px;margin-bottom:5px;">' + s[1] + "</div>" +
+          '<div style="font-size:14px;color:var(--ink-2);line-height:1.6;">' + escapeHtml(text) + "</div>" +
+          "</div>"
+        );
+      })
+      .join("");
   }
 
   function shareOrCopy(url, text) {
@@ -205,7 +268,6 @@
     ctx.fillStyle = grad;
     ctx.fillRect(0, 0, W, H);
 
-    // card panel
     var pad = 60;
     ctx.fillStyle = "rgba(255,255,255,0.94)";
     roundRect(ctx, pad, 220, W - pad * 2, H - 350, 40);
@@ -231,7 +293,6 @@
     ctx.font = "400 30px sans-serif";
     wrapText(ctx, ch.desc, W / 2, 610, W - pad * 2 - 80, 42);
 
-    // stat bars
     var keys = window.LoveDNA.STAT_KEYS;
     var startY = 820;
     keys.forEach(function (k, i) {
