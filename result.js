@@ -5,6 +5,27 @@
   var pCode = qs.get("p");
   var app = document.getElementById("app");
 
+  // ---- Kakao Talk share SDK ----
+  // JavaScript key is safe to keep in client code (Kakao protects it via
+  // registered-domain whitelisting, not secrecy). Until a real key is set,
+  // the 카카오톡 share option quietly falls back to the share sheet's other
+  // options instead of throwing.
+  var KAKAO_JS_KEY = "b0a029c2f441de08c87f27d55bb1c149";
+  var kakaoReady = false;
+  try {
+    if (window.Kakao && KAKAO_JS_KEY) {
+      window.Kakao.init(KAKAO_JS_KEY);
+      kakaoReady = window.Kakao.isInitialized();
+    }
+  } catch (e) {
+    kakaoReady = false;
+  }
+
+  function isInAppBrowser() {
+    var ua = navigator.userAgent || "";
+    return /KAKAOTALK|FBAN|FBAV|FB_IAB|Instagram|NAVER\(inapp|Line\//i.test(ua);
+  }
+
   if (!dCode) {
     app.innerHTML = emptyState();
   } else {
@@ -63,7 +84,11 @@
 
   function subscribeToRankAlerts(pairId, nameA, nameB, btn) {
     if (!("serviceWorker" in navigator) || !("PushManager" in window)) {
-      toast("이 브라우저는 알림 기능을 지원하지 않아요.");
+      if (isInAppBrowser()) {
+        toast("카카오톡 등 인앱 브라우저는 알림을 지원 안 해요. 우측 상단 메뉴에서 '다른 브라우저로 열기'를 눌러주세요.");
+      } else {
+        toast("이 브라우저는 알림 기능을 지원하지 않아요. (Chrome, Safari 등 최신 브라우저를 이용해주세요)");
+      }
       return;
     }
     btn.disabled = true;
@@ -142,7 +167,7 @@
       '<p class="footer-note">본 테스트는 재미를 위한 콘텐츠이며 과학적 근거를 기반으로 하지 않습니다.</p>';
 
     document.getElementById("shareBtn").addEventListener("click", function () {
-      shareOrCopy(buildInviteUrl(dCode), buildInviteText(me.n, ch), onShareDone);
+      openShareSheet(buildInviteUrl(dCode), buildInviteText(me.n, ch), onShareDone);
     });
     document.getElementById("saveCardBtn").addEventListener("click", function () {
       drawCard(me, ch);
@@ -207,7 +232,9 @@
       "</div>" +
       '<div class="score-big"><div class="num">' + compat.overall + "</div><div class=\"cap\">종합 궁합 점수 · " + pctToClosenessLabel(compat.overall) + "</div></div>" +
       "</div>" +
-      '<div class="section-title">🏆 전체 커플 순위</div><div class="card" id="leaderboardSection"><div class="lb-loading">순위 불러오는 중...</div></div>' +
+      '<div class="section-title">🏆 전체 커플 순위</div>' +
+      '<div class="lb-hook">지금까지 테스트한 <b>모든 커플</b>이 경쟁 중이에요.<br/>우리도 순위에 도전해볼까요? 🔥</div>' +
+      '<div class="card lb-hero-card" id="leaderboardSection"><div class="lb-loading">순위 불러오는 중...</div></div>' +
       '<div class="section-title">🗺️ 관계 지도</div>' +
       '<div class="card">' + radarSvg + "</div>" +
       '<div class="section-title">📈 세부 궁합 점수</div>' +
@@ -218,7 +245,9 @@
       '<div class="signal-headline">⚠️ ' + escapeHtml(signals[0]) + '!</div>' +
       (signals.length > 1 ? '<div class="signal-more">신호가 <b>1개 더</b> 있어요 🔒</div>' : "") +
       '<div class="locked-teaser">' +
-      '<div class="locked-teaser-text">왜 이 신호가 나타났는지, 이 시기에 무엇을 조심해야 하는지<br/>두 사람의 기운과 데이터를 정밀 분석한 리포트에서 확인하세요</div>' +
+      '<div class="locked-hook">어? 이거 진짜 우리 얘기 같은데... 🤔<br/>왜 이런 신호가 나타났는지 궁금하지 않아요?</div>' +
+      '<div class="locked-preview">🔒 미리보기: "' + escapeHtml((chA.name || "") + " × " + (chB.name || "")) + ' 조합, 이 시기를 조심하세요"</div>' +
+      '<div class="locked-teaser-text">두 사람의 기운과 답변 데이터를 정밀 분석해서<br/><b>이 시기에 무엇을 조심해야 하는지, 각자에게 어떤 말을 해주면 좋은지</b>까지<br/>구체적인 시나리오로 알려드려요</div>' +
       '<div class="price-row" id="priceRow"><span class="price-tag" id="priceTag">2,900원</span></div>' +
       '<button class="btn btn-primary unlock-btn" id="unlockBtn">지금 정밀 분석 결과 확인하기</button>' +
       '<div class="locked-note">🔒 결제 후 즉시 확인 가능</div>' +
@@ -236,10 +265,10 @@
       unlockReport(me, chA, partner, chB, compat, signals);
     });
     document.getElementById("inviteFriendBtn").addEventListener("click", function () {
-      shareOrCopy(buildInviteUrl(dCode), buildInviteText(me.n, chA), onShareDone);
+      openShareSheet(buildInviteUrl(dCode), buildInviteText(me.n, chA), onShareDone);
     });
     document.getElementById("shareResultBtn").addEventListener("click", function () {
-      shareOrCopy(location.href, "우리 궁합 결과 확인해봐 💘", onShareDone);
+      openShareSheet(location.href, "우리 궁합 결과 확인해봐 💘", onShareDone);
     });
 
     submitAndRenderLeaderboard(pairId, me, chA, partner, chB, compat.overallPrecise);
@@ -412,26 +441,83 @@
     if (adviceHtml) box.insertAdjacentHTML("afterend", adviceHtml);
   }
 
-  function shareOrCopy(url, text, onSuccess) {
-    if (navigator.share) {
-      // the promise only resolves if the user actually picked an app and
-      // completed the share sheet — it rejects (AbortError) on cancel, so
-      // this is a real "did they actually send it" signal, not just a click
-      navigator.share({ title: "LOVE DNA", text: text, url: url }).then(function () {
-        if (onSuccess) onSuccess();
-      }).catch(function () {});
-    } else if (navigator.clipboard) {
-      // no share-sheet to confirm completion here, so we can't verify the
-      // link was actually sent anywhere — treat a successful copy as a
-      // good-faith "share" since it's the best signal this path has
-      navigator.clipboard.writeText(url).then(function () {
-        toast("링크가 복사됐어요!");
-        if (onSuccess) onSuccess();
-      });
-    } else {
-      window.prompt("아래 링크를 복사하세요:", url);
-      if (onSuccess) onSuccess();
+  // ---- custom share sheet: 카카오톡 / 문자 / 페이스북 / 링크 복사 ----
+  // navigator.share() (the OS-native sheet) is unreliable inside in-app
+  // browsers (KakaoTalk/Instagram/etc.), so we build our own consistent menu
+  // instead of relying on it.
+  function openShareSheet(url, text, onDone) {
+    var overlay = document.createElement("div");
+    overlay.className = "share-sheet-overlay";
+    overlay.innerHTML =
+      '<div class="share-sheet">' +
+      '<div class="share-sheet-title">어디로 공유할까요?</div>' +
+      '<div class="share-sheet-grid">' +
+      '<button class="share-sheet-item" data-ch="kakao"><div class="share-sheet-ico ico-kakao">💬</div><div class="share-sheet-label">카카오톡</div></button>' +
+      '<button class="share-sheet-item" data-ch="sms"><div class="share-sheet-ico ico-sms">✉️</div><div class="share-sheet-label">문자</div></button>' +
+      '<button class="share-sheet-item" data-ch="fb"><div class="share-sheet-ico ico-fb">f</div><div class="share-sheet-label">페이스북</div></button>' +
+      '<button class="share-sheet-item" data-ch="copy"><div class="share-sheet-ico ico-copy">🔗</div><div class="share-sheet-label">링크 복사</div></button>' +
+      "</div>" +
+      '<button class="btn btn-ghost share-sheet-cancel" data-ch="cancel">취소</button>' +
+      "</div>";
+    document.body.appendChild(overlay);
+    requestAnimationFrame(function () { overlay.classList.add("show"); });
+
+    function close() {
+      overlay.classList.remove("show");
+      setTimeout(function () { overlay.remove(); }, 200);
     }
+
+    overlay.addEventListener("click", function (e) {
+      if (e.target === overlay) close();
+    });
+
+    overlay.querySelectorAll("[data-ch]").forEach(function (btn) {
+      btn.addEventListener("click", function () {
+        var ch = btn.getAttribute("data-ch");
+        close();
+        if (ch === "cancel") return;
+
+        if (ch === "kakao") {
+          if (kakaoReady && window.Kakao && window.Kakao.Share) {
+            window.Kakao.Share.sendDefault({
+              objectType: "feed",
+              content: {
+                title: "LOVE DNA",
+                description: text,
+                imageUrl: location.origin + "/favicon.png",
+                link: { mobileWebUrl: url, webUrl: url },
+              },
+              buttons: [{ title: "테스트 하러가기", link: { mobileWebUrl: url, webUrl: url } }],
+            });
+            if (onDone) onDone();
+          } else {
+            toast("카카오톡 공유는 곧 열려요! 지금은 다른 방법으로 보내주세요 🙏");
+          }
+          return;
+        }
+        if (ch === "sms") {
+          window.location.href = "sms:?body=" + encodeURIComponent(text + " " + url);
+          if (onDone) onDone();
+          return;
+        }
+        if (ch === "fb") {
+          window.open("https://www.facebook.com/sharer/sharer.php?u=" + encodeURIComponent(url), "_blank");
+          if (onDone) onDone();
+          return;
+        }
+        if (ch === "copy") {
+          if (navigator.clipboard) {
+            navigator.clipboard.writeText(url).then(function () {
+              toast("링크가 복사됐어요!");
+              if (onDone) onDone();
+            });
+          } else {
+            window.prompt("아래 링크를 복사하세요:", url);
+            if (onDone) onDone();
+          }
+        }
+      });
+    });
   }
 
   function toast(msg) {
