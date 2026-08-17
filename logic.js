@@ -1,7 +1,49 @@
+
+클라우드
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+Logic · JS
 /* LOVE DNA - core logic (no dependencies, runs in browser or Node) */
 (function (root) {
   "use strict";
-
+ 
   // ---- 6 stats, fixed order (also the fixed radar-axis / legend order) ----
   var STAT_KEYS = ["ae", "jl", "in", "cm", "es", "ca"];
   var STAT_LABELS = {
@@ -12,7 +54,7 @@
     es: "감정민감도",
     ca: "갈등회피",
   };
-
+ 
   // ---- 18 questions, 3 per stat, each answer worth 0-3 points on that stat ----
   var QUESTIONS = [
     // 애정표현 (ae)
@@ -76,7 +118,7 @@
       "할 말은 하고 넘어간다", "대화로 오해를 풀려고 한다", "일단 자리를 피하고 본다", "아예 그 주제를 꺼내지 않는다"
     ]},
   ];
-
+ 
   // ---- scoring: answers = array of 18 ints (0-3), in QUESTIONS order ----
   function computeStats(answers) {
     var sums = { ae: 0, jl: 0, in: 0, cm: 0, es: 0, ca: 0 };
@@ -94,7 +136,7 @@
     });
     return stats; // {ae,jl,in,cm,es,ca} each 0-100
   }
-
+ 
   // ---- character archetypes, one per "dominant stat" ----
   var CHARACTERS = {
     ae: { key: "ae", emoji: "🌻", name: "표현왕 해바라기", type: "올인 표현형",
@@ -110,7 +152,7 @@
     ca: { key: "ca", emoji: "🐼", name: "평화주의 판다", type: "무드메이커 조율형",
       desc: "다툼보다는 평화를 택하는 타입. 갈등 상황에서 먼저 물러서더라도 관계의 편안한 분위기를 지키는 걸 더 중요하게 생각해요." },
   };
-
+ 
   function assignCharacter(stats) {
     var order = STAT_KEYS.slice().sort(function (a, b) { return stats[b] - stats[a]; });
     var primary = order[0];
@@ -126,7 +168,7 @@
       secondaryScore: stats[secondary],
     };
   }
-
+ 
   // ---- compact encode/decode for shareable URLs ----
   function b64encode(str) {
     if (typeof window !== "undefined" && window.btoa) {
@@ -144,7 +186,7 @@
     }
     return Buffer.from(s, "base64").toString("utf-8");
   }
-
+ 
   function encodeResult(payload) {
     // payload: {n: name, s: [ae,jl,in,cm,es,ca], c: characterKey, mbti: string}
     var compact = [payload.n || "", payload.c, payload.mbti || "", payload.s.join(",")].join("|");
@@ -165,11 +207,11 @@
       return null;
     }
   }
-
+ 
   // ---- compatibility scoring between two stat sets ----
   function closeness(a, b) { return 100 - Math.abs(a - b); }
   function clamp(v) { return Math.max(0, Math.min(100, Math.round(v))); }
-
+ 
   function computeCompatibility(A, B) {
     var attraction = 0.4 * closeness(A.ae, B.ae) + 0.3 * closeness(A.es, B.es) + 0.3 * (100 - closeness(A.in, B.in));
     var conversation = 0.6 * (100 - (A.ca + B.ca) / 2) + 0.4 * closeness(A.es, B.es);
@@ -177,7 +219,7 @@
     var lifestyle = 0.5 * closeness(A.in, B.in) + 0.5 * closeness(A.cm, B.cm);
     var conflictRisk = 0.4 * ((A.jl + B.jl) / 2) + 0.3 * (100 - closeness(A.ca, B.ca)) + 0.3 * (100 - closeness(A.es, B.es));
     var longTerm = 0.5 * ((A.cm + B.cm) / 2) + 0.5 * closeness(A.cm, B.cm);
-
+ 
     var scores = {
       attraction: clamp(attraction),
       conversation: clamp(conversation),
@@ -191,7 +233,35 @@
     );
     return { scores: scores, overall: overall };
   }
-
+ 
+  // ---- deterministic "risk signal" teasers shown BEFORE payment ----
+  // Picks the 2 most distinctive/risky data points between A and B so the
+  // free teaser always has something specific and true to show, ranked by
+  // how strongly each pattern shows up in the two stat sets.
+  function computeRiskSignals(A, B, compat) {
+    function diff(k) { return Math.abs(A[k] - B[k]); }
+    var candidates = [
+      { id: "conflict", severity: compat.scores.conflictRisk,
+        text: "만난 지 3~6개월 차, 사소한 일로 자주 부딪히는 시기가 올 수 있어요" },
+      { id: "affection_gap", severity: diff("ae"),
+        text: "애정표현 방식 차이 때문에 한쪽이 서운함을 쌓아두는 시기가 있어요" },
+      { id: "jealousy", severity: Math.max(A.jl, B.jl),
+        text: "한쪽의 불안·질투가 커지며 신뢰 문제로 번질 수 있는 시기가 있어요" },
+      { id: "avoidance", severity: (A.ca + B.ca) / 2,
+        text: "둘 다 갈등을 피하려는 성향이라, 쌓인 감정이 한 번에 터질 수 있는 시기가 있어요" },
+      { id: "independence_gap", severity: diff("in"),
+        text: "서로 원하는 '거리감' 차이 때문에 한쪽이 답답함을 느끼는 시기가 올 수 있어요" },
+      { id: "commitment_gap", severity: diff("cm"),
+        text: "미래를 바라보는 속도 차이로 관계의 방향성 고민이 깊어지는 시기가 있어요" },
+      { id: "emotion_gap", severity: diff("es"),
+        text: "감정을 대하는 온도 차이로 대화 타이밍이 자꾸 어긋나는 시기가 올 수 있어요" },
+      { id: "burnout", severity: 100 - compat.scores.longTerm,
+        text: "6개월~1년 사이, 관계 권태기 신호가 나타날 수 있는 시기가 있어요" },
+    ];
+    candidates.sort(function (a, b) { return b.severity - a.severity; });
+    return candidates.slice(0, 2).map(function (c) { return c.text; });
+  }
+ 
   var LoveDNA = {
     STAT_KEYS: STAT_KEYS,
     STAT_LABELS: STAT_LABELS,
@@ -202,11 +272,16 @@
     encodeResult: encodeResult,
     decodeResult: decodeResult,
     computeCompatibility: computeCompatibility,
+    computeRiskSignals: computeRiskSignals,
   };
-
+ 
   if (typeof module !== "undefined" && module.exports) {
     module.exports = LoveDNA;
   } else {
     root.LoveDNA = LoveDNA;
   }
 })(typeof window !== "undefined" ? window : global);
+ 
+
+
+
