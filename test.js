@@ -35,7 +35,7 @@
     stage.innerHTML =
       '<div class="q-index">STEP 1</div>' +
       '<div class="q-text">먼저 간단한 정보를 알려주세요</div>' +
-      '<div class="field"><label>이름 (닉네임 가능)</label><input id="f-name" type="text" placeholder="예: 김러브" maxlength="10"/></div>' +
+      '<div class="field"><label>이름 (이름이나 닉네임)</label><input id="f-name" type="text" placeholder="예: 김러브" maxlength="10"/></div>' +
       '<div class="field"><label>성별</label><div class="pill-group" id="f-gender">' +
         pill("male", "남성") + pill("female", "여성") + pill("other", "선택안함") +
       '</div></div>' +
