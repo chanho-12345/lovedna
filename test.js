@@ -118,11 +118,15 @@
     setTimeout(function () {
       var stats = window.LoveDNA.computeStats(answers);
       var character = window.LoveDNA.assignCharacter(stats);
+      // inherit the room from whoever invited us (so the whole chain shares
+      // one leaderboard); if we're the first person in a new chain, mint one
+      var room = (partnerData && partnerData.room) ? partnerData.room : window.LoveDNA.generateRoomId();
       var code = window.LoveDNA.encodeResult({
         n: info.name,
         c: character.key,
         mbti: info.mbti,
         s: window.LoveDNA.STAT_KEYS.map(function (k) { return stats[k]; }),
+        room: room,
       });
       var url = "./result.html?d=" + encodeURIComponent(code);
       if (partnerCode) url += "&p=" + encodeURIComponent(partnerCode);
