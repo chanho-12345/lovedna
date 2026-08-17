@@ -45,7 +45,8 @@
         pill("male", "남성") + pill("female", "여성") + pill("other", "선택안함") +
       '</div></div>' +
       '<div class="field"><label>생년월일</label><input id="f-birth" type="date"/></div>' +
-      '<div class="field"><label>MBTI</label><input id="f-mbti" type="text" placeholder="예: INFP" maxlength="4" style="text-transform:uppercase"/></div>' +
+      '<div class="field"><label>MBTI</label><input id="f-mbti" type="text" placeholder="예: INFP" maxlength="4" style="text-transform:uppercase"/>' +
+      '<div class="field-hint">🔮 사주 기반 분석에도 활용되니 생년월일·MBTI는 정확하게 입력해주세요!</div></div>' +
       '<div class="field"><label>현재 연애 상태</label><div class="pill-group" id="f-status">' +
         pill("solo", "솔로") + pill("some", "썸") + pill("dating", "연애 중") + pill("breakup", "이별") +
       '</div></div>' +
