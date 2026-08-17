@@ -3,6 +3,8 @@
   var qs = new URLSearchParams(location.search);
   var partnerCode = qs.get("partner");
   var partnerData = partnerCode ? window.LoveDNA.decodeResult(partnerCode) : null;
+  var challengeScoreRaw = qs.get("score");
+  var challengeScore = challengeScoreRaw && !isNaN(parseFloat(challengeScoreRaw)) ? parseFloat(challengeScoreRaw) : null;
 
   var stage = document.getElementById("stage");
   var progressFill = document.getElementById("progressFill");
@@ -14,7 +16,10 @@
   var answers = new Array(window.LoveDNA.QUESTIONS.length).fill(null);
   var info = { name: "", gender: "", birth: "", mbti: "", status: "" };
 
-  if (partnerData) {
+  if (partnerData && challengeScore !== null) {
+    partnerBanner.innerHTML =
+      '<div class="banner">🔥 ' + escapeHtml(partnerData.n || "상대방") + '님과의 궁합은 <b>' + challengeScore.toFixed(2) + '점</b>이었어요!<br/>당신과는 몇 점이 나올까요? 지금 도전해보세요.</div>';
+  } else if (partnerData) {
     partnerBanner.innerHTML =
       '<div class="banner">💕 ' + escapeHtml(partnerData.n || "상대방") + ' 님이 보낸 링크예요! 테스트를 마치면 궁합 결과를 바로 볼 수 있어요.</div>';
   }
