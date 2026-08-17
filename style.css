@@ -187,6 +187,12 @@ html, body {
 .score-big .num { font-size: 56px; font-weight: 900; background: linear-gradient(120deg, var(--pink), var(--violet)); -webkit-background-clip: text; background-clip: text; color: transparent; line-height: 1; }
 .score-big .cap { font-size: 13px; color: var(--ink-muted); margin-top: 6px; font-weight: 700; }
 
+.challenge-score {
+  font-size: 40px; font-weight: 900; line-height: 1;
+  background: linear-gradient(120deg, #ff8a3d, var(--pink), var(--violet));
+  -webkit-background-clip: text; background-clip: text; color: transparent;
+}
+
 .two-char { display: flex; align-items: center; justify-content: center; gap: 18px; padding: 10px 0 4px; }
 .two-char .who { text-align: center; }
 .two-char .who .e { font-size: 40px; }
@@ -363,6 +369,14 @@ html, body {
   z-index: 50;
 }
 .toast.show { opacity: 1; }
+
+.push-help-banner {
+  position: fixed; left: 50%; bottom: 24px; transform: translateX(-50%);
+  background: var(--ink); color: #fff; padding: 16px 20px; border-radius: 18px;
+  font-size: 13.5px; font-weight: 700; box-shadow: 0 8px 24px rgba(0,0,0,.3);
+  z-index: 60; text-align: center; max-width: 340px; line-height: 1.5;
+}
+.push-help-banner .btn { width: 100%; }
 
 /* share sheet (bottom modal with app icons) */
 .share-sheet-overlay {
