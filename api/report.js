@@ -80,7 +80,7 @@ module.exports = async function handler(req, res) {
     const data = await upstream.json();
     const raw = data && data.content && data.content[0] && data.content[0].text;
     if (!raw) {
-      res.status(502).json({ error: "empty_response" });
+      res.status(502).json({ error: "empty_response", debug: JSON.stringify(data).slice(0, 800) });
       return;
     }
 
