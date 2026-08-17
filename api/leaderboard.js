@@ -1,7 +1,11 @@
 // Vercel Serverless Function — /api/leaderboard
-// POST { room, pairId, nameA, charA, nameB, charB, score } -> records/updates
-//   this couple's compat score in their viral-chain "room"
-// GET  ?room=<id>&pair=<pairId> -> { top: [...], myRank, total }
+// POST { pairId, nameA, charA, nameB, charB, score } -> records/updates this
+//   couple's compat score on the single, app-wide leaderboard
+// GET  ?pair=<pairId> -> { top: [...], myRank, total }
+//
+// This is a GLOBAL leaderboard: every couple who completes a compat test in
+// LOVE DNA competes on the same ranking, regardless of which invite link
+// they came in through.
 //
 // Requires a Redis database connected to this Vercel project (Storage tab ->
 // Upstash for Redis). Vercel injects KV_REST_API_URL / KV_REST_API_TOKEN
@@ -28,6 +32,26 @@ function clip(s) {
   return String(s || "").slice(0, 40);
 }
 
+// @upstash/redis auto-deserializes JSON-looking string values when reading
+// them back (hget/hmget/hgetall etc. return an already-parsed object, not
+// the raw string) — so we must NOT call JSON.parse() again on the result.
+// This helper handles both that case and the raw-string fallback case
+// safely, whichever the SDK gives us.
+function safeParseMeta(v) {
+  if (v && typeof v === "object") return v;
+  if (typeof v === "string") {
+    try {
+      return JSON.parse(v);
+    } catch (e) {
+      return {};
+    }
+  }
+  return {};
+}
+
+var ZKEY = "lovedna:lb:global";
+var MKEY = "lovedna:meta:global";
+
 module.exports = async function handler(req, res) {
   const redis = getRedis();
   if (!redis) {
@@ -41,19 +65,15 @@ module.exports = async function handler(req, res) {
   try {
     if (req.method === "POST") {
       const body = req.body || {};
-      const room = body.room;
       const pairId = body.pairId;
       const score = Number(body.score);
-      if (!room || !pairId || Number.isNaN(score)) {
+      if (!pairId || Number.isNaN(score)) {
         res.status(400).json({ error: "missing_data" });
         return;
       }
 
-      const zkey = "lovedna:lb:" + room;
-      const mkey = "lovedna:meta:" + room;
-
-      await redis.zadd(zkey, { score: score, member: pairId });
-      await redis.hset(mkey, {
+      await redis.zadd(ZKEY, { score: score, member: pairId });
+      await redis.hset(MKEY, {
         [pairId]: JSON.stringify({
           nameA: clip(body.nameA),
           charA: clip(body.charA),
@@ -68,17 +88,9 @@ module.exports = async function handler(req, res) {
     }
 
     if (req.method === "GET") {
-      const room = (req.query && req.query.room) || "";
       const pairId = (req.query && req.query.pair) || "";
-      if (!room) {
-        res.status(400).json({ error: "missing_room" });
-        return;
-      }
 
-      const zkey = "lovedna:lb:" + room;
-      const mkey = "lovedna:meta:" + room;
-
-      const raw = await redis.zrange(zkey, 0, 9, { rev: true, withScores: true });
+      const raw = await redis.zrange(ZKEY, 0, 9, { rev: true, withScores: true });
       // @upstash/redis returns a flat [member, score, member, score, ...] array
       const idsInOrder = [];
       const scoreById = {};
@@ -90,13 +102,9 @@ module.exports = async function handler(req, res) {
 
       let metaById = {};
       if (idsInOrder.length) {
-        const metaList = await redis.hmget(mkey, ...idsInOrder);
+        const metaList = await redis.hmget(MKEY, ...idsInOrder);
         idsInOrder.forEach(function (id) {
-          try {
-            metaById[id] = JSON.parse(metaList[id] || "{}");
-          } catch (e) {
-            metaById[id] = {};
-          }
+          metaById[id] = safeParseMeta(metaList ? metaList[id] : null);
         });
       }
 
@@ -114,10 +122,10 @@ module.exports = async function handler(req, res) {
 
       let myRank = null;
       if (pairId) {
-        const rank = await redis.zrevrank(zkey, pairId);
+        const rank = await redis.zrevrank(ZKEY, pairId);
         myRank = rank === null || rank === undefined ? null : rank + 1;
       }
-      const total = await redis.zcard(zkey);
+      const total = await redis.zcard(ZKEY);
 
       res.status(200).json({ top: top, myRank: myRank, total: total });
       return;
