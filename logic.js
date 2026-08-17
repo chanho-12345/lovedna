@@ -1,7 +1,7 @@
 /* LOVE DNA - core logic (no dependencies, runs in browser or Node) */
 (function (root) {
   "use strict";
- 
+
   // ---- 6 stats, fixed order (also the fixed radar-axis / legend order) ----
   var STAT_KEYS = ["ae", "jl", "in", "cm", "es", "ca"];
   var STAT_LABELS = {
@@ -12,7 +12,7 @@
     es: "감정민감도",
     ca: "갈등회피",
   };
- 
+
   // ---- 18 questions, 3 per stat, each answer worth 0-3 points on that stat ----
   var QUESTIONS = [
     // 애정표현 (ae)
@@ -76,7 +76,7 @@
       "할 말은 하고 넘어간다", "대화로 오해를 풀려고 한다", "일단 자리를 피하고 본다", "아예 그 주제를 꺼내지 않는다"
     ]},
   ];
- 
+
   // ---- scoring: answers = array of 18 ints (0-3), in QUESTIONS order ----
   function computeStats(answers) {
     var sums = { ae: 0, jl: 0, in: 0, cm: 0, es: 0, ca: 0 };
@@ -94,23 +94,25 @@
     });
     return stats; // {ae,jl,in,cm,es,ca} each 0-100
   }
- 
+
   // ---- character archetypes, one per "dominant stat" ----
+  // each also carries a light "오행"(five-element) flavor tag used for the
+  // paid report's fortune-telling-flavored language
   var CHARACTERS = {
-    ae: { key: "ae", emoji: "🌻", name: "표현왕 해바라기", type: "올인 표현형",
+    ae: { key: "ae", emoji: "🌻", name: "표현왕 해바라기", type: "올인 표현형", element: "🔥 불의 기운",
       desc: "마음을 숨기지 못하는 해바라기 타입. 좋아하면 좋아한다고, 사랑하면 사랑한다고 바로바로 표현해요. 연인은 늘 사랑받고 있다는 확신이 들어요." },
-    jl: { key: "jl", emoji: "🐱", name: "레이더 고양이", type: "촉촉 안테나형",
+    jl: { key: "jl", emoji: "🐱", name: "레이더 고양이", type: "촉촉 안테나형", element: "⚔️ 쇠의 기운",
       desc: "관심 가는 사람의 사소한 변화까지 다 잡아내는 예민한 촉을 가졌어요. 좋아하는 만큼 신경도 많이 쓰는, 관심이 곧 사랑인 타입이에요." },
-    in: { key: "in", emoji: "🦋", name: "자유로운 나비", type: "마이웨이 독립형",
+    in: { key: "in", emoji: "🦋", name: "자유로운 나비", type: "마이웨이 독립형", element: "🌳 나무의 기운",
       desc: "연애를 해도 나의 삶과 취향은 확실히 챙기는 타입. 얽매이지 않는 편안한 연애를 추구하고, 혼자서도 충분히 잘 지내요." },
-    cm: { key: "cm", emoji: "🐶", name: "일편단심 리트리버", type: "찐헌신형",
+    cm: { key: "cm", emoji: "🐶", name: "일편단심 리트리버", type: "찐헌신형", element: "⛰️ 흙의 기운",
       desc: "한번 마음을 주면 끝까지 최선을 다하는 타입. 힘든 순간이 와도 쉽게 포기하지 않고 이 사람과 함께하는 미래를 진지하게 그려요." },
-    es: { key: "es", emoji: "🦦", name: "감성 젖은 수달", type: "몰입 공감형",
+    es: { key: "es", emoji: "🦦", name: "감성 젖은 수달", type: "몰입 공감형", element: "💧 물의 기운",
       desc: "감정의 물결에 풍덩 빠지는 섬세한 타입. 연인의 기분 변화를 누구보다 빨리 캐치하고, 함께 울고 웃는 깊은 교감을 나눠요." },
-    ca: { key: "ca", emoji: "🐼", name: "평화주의 판다", type: "무드메이커 조율형",
+    ca: { key: "ca", emoji: "🐼", name: "평화주의 판다", type: "무드메이커 조율형", element: "⛰️ 흙의 기운",
       desc: "다툼보다는 평화를 택하는 타입. 갈등 상황에서 먼저 물러서더라도 관계의 편안한 분위기를 지키는 걸 더 중요하게 생각해요." },
   };
- 
+
   function assignCharacter(stats) {
     var order = STAT_KEYS.slice().sort(function (a, b) { return stats[b] - stats[a]; });
     var primary = order[0];
@@ -121,12 +123,13 @@
       emoji: base.emoji,
       name: base.name,
       type: base.type,
+      element: base.element,
       desc: base.desc,
       secondaryLabel: STAT_LABELS[secondary],
       secondaryScore: stats[secondary],
     };
   }
- 
+
   // ---- compact encode/decode for shareable URLs ----
   function b64encode(str) {
     if (typeof window !== "undefined" && window.btoa) {
@@ -144,7 +147,7 @@
     }
     return Buffer.from(s, "base64").toString("utf-8");
   }
- 
+
   function encodeResult(payload) {
     // payload: {n: name, s: [ae,jl,in,cm,es,ca], c: characterKey, mbti: string}
     var compact = [payload.n || "", payload.c, payload.mbti || "", payload.s.join(",")].join("|");
@@ -165,11 +168,11 @@
       return null;
     }
   }
- 
+
   // ---- compatibility scoring between two stat sets ----
   function closeness(a, b) { return 100 - Math.abs(a - b); }
   function clamp(v) { return Math.max(0, Math.min(100, Math.round(v))); }
- 
+
   function computeCompatibility(A, B) {
     var attraction = 0.4 * closeness(A.ae, B.ae) + 0.3 * closeness(A.es, B.es) + 0.3 * (100 - closeness(A.in, B.in));
     var conversation = 0.6 * (100 - (A.ca + B.ca) / 2) + 0.4 * closeness(A.es, B.es);
@@ -177,7 +180,7 @@
     var lifestyle = 0.5 * closeness(A.in, B.in) + 0.5 * closeness(A.cm, B.cm);
     var conflictRisk = 0.4 * ((A.jl + B.jl) / 2) + 0.3 * (100 - closeness(A.ca, B.ca)) + 0.3 * (100 - closeness(A.es, B.es));
     var longTerm = 0.5 * ((A.cm + B.cm) / 2) + 0.5 * closeness(A.cm, B.cm);
- 
+
     var scores = {
       attraction: clamp(attraction),
       conversation: clamp(conversation),
@@ -191,7 +194,7 @@
     );
     return { scores: scores, overall: overall };
   }
- 
+
   // ---- deterministic "risk signal" teasers shown BEFORE payment ----
   // Picks the 2 most distinctive/risky data points between A and B so the
   // free teaser always has something specific and true to show, ranked by
@@ -219,7 +222,7 @@
     candidates.sort(function (a, b) { return b.severity - a.severity; });
     return candidates.slice(0, 2).map(function (c) { return c.text; });
   }
- 
+
   var LoveDNA = {
     STAT_KEYS: STAT_KEYS,
     STAT_LABELS: STAT_LABELS,
@@ -232,14 +235,10 @@
     computeCompatibility: computeCompatibility,
     computeRiskSignals: computeRiskSignals,
   };
- 
+
   if (typeof module !== "undefined" && module.exports) {
     module.exports = LoveDNA;
   } else {
     root.LoveDNA = LoveDNA;
   }
 })(typeof window !== "undefined" ? window : global);
- 
-
-
-
