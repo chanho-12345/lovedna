@@ -66,7 +66,7 @@ module.exports = async function handler(req, res) {
       },
       body: JSON.stringify({
         model: "claude-sonnet-5",
-        max_tokens: 1024,
+        max_tokens: 2048,
         messages: [{ role: "user", content: prompt }],
       }),
     });
@@ -78,7 +78,8 @@ module.exports = async function handler(req, res) {
     }
 
     const data = await upstream.json();
-    const raw = data && data.content && data.content[0] && data.content[0].text;
+    const textBlock = data && Array.isArray(data.content) ? data.content.find((b) => b && b.type === "text") : null;
+    const raw = textBlock && textBlock.text;
     if (!raw) {
       res.status(502).json({ error: "empty_response", debug: JSON.stringify(data).slice(0, 800) });
       return;
