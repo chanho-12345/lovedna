@@ -150,15 +150,16 @@
       '<div class="card">' + radarSvg + "</div>" +
       '<div class="section-title">📈 세부 궁합 점수</div>' +
       '<div class="card">' + subRows + '<p style="font-size:12px;color:var(--ink-muted);margin:12px 0 0;">* 갈등 위험도는 낮을수록 좋아요</p></div>' +
-      '<div class="section-title">⚠️ 위험 신호 감지</div>' +
+      '<div class="section-title">🔮 위험 신호 감지</div>' +
       '<div class="signal-card card" id="lockedSection">' +
-      '<div class="signal-badge">두 사람의 데이터에서 신호 ' + signals.length + '가지를 발견했어요</div>' +
-      '<ul class="signal-list">' +
-      signals.map(function (s) { return '<li><span class="signal-ico">⚠️</span><span>' + escapeHtml(s) + "</span></li>"; }).join("") +
-      "</ul>" +
+      '<div class="signal-badge">' + escapeHtml(chA.element) + ' × ' + escapeHtml(chB.element) + ' 조합 분석</div>' +
+      '<div class="signal-headline">⚠️ ' + escapeHtml(signals[0]) + '!</div>' +
+      (signals.length > 1 ? '<div class="signal-more">신호가 <b>1개 더</b> 있어요 🔒</div>' : "") +
       '<div class="locked-teaser">' +
-      '<div class="locked-teaser-text">이 신호가 왜 나타났는지, 이 시기에 무엇을 조심해야 하는지<br/>두 사람의 데이터를 정밀 분석한 리포트에서 확인하세요</div>' +
-      '<button class="btn btn-primary unlock-btn" id="unlockBtn">지금 3,900원으로 정밀 분석 결과 확인하기</button>' +
+      '<div class="locked-teaser-text">왜 이 신호가 나타났는지, 이 시기에 무엇을 조심해야 하는지<br/>두 사람의 기운과 데이터를 정밀 분석한 리포트에서 확인하세요</div>' +
+      '<div class="price-row" id="priceRow"><span class="price-tag" id="priceTag">3,900원</span></div>' +
+      '<button class="btn btn-primary unlock-btn" id="unlockBtn">지금 정밀 분석 결과 확인하기</button>' +
+      '<button class="btn btn-ghost btn-sm" id="shareForDiscountBtn" style="margin-top:8px;">🔗 링크 공유하고 1,000원 할인받기</button>' +
       '<div class="locked-note">🔒 결제 후 즉시 확인 가능</div>' +
       "</div>" +
       "</div>" +
@@ -171,6 +172,28 @@
     document.getElementById("shareResultBtn").addEventListener("click", function () {
       shareOrCopy(location.href, "우리 궁합 결과 확인해봐 💘");
     });
+    document.getElementById("shareForDiscountBtn").addEventListener("click", function () {
+      shareOrCopy(location.href, (me.n || "나") + "님이 LOVE DNA 궁합 결과를 보냈어요 💘");
+      setDiscountUnlocked();
+      updatePriceUI();
+    });
+    updatePriceUI();
+  }
+
+  function hasDiscountUnlocked() {
+    try { return localStorage.getItem("lovedna_shared_discount") === "1"; } catch (e) { return false; }
+  }
+  function setDiscountUnlocked() {
+    try { localStorage.setItem("lovedna_shared_discount", "1"); } catch (e) {}
+  }
+  function updatePriceUI() {
+    var tag = document.getElementById("priceTag");
+    if (!tag) return;
+    if (hasDiscountUnlocked()) {
+      tag.innerHTML = '<span class="price-strike">3,900원</span> <span class="price-now">2,900원</span> <span class="price-discount-badge">공유 할인 적용</span>';
+    } else {
+      tag.textContent = "3,900원";
+    }
   }
 
   function unlockReport(me, chA, partner, chB, compat, signals) {
@@ -179,13 +202,13 @@
     box.innerHTML =
       '<div class="analyzing">' +
       '<div class="analyzing-spinner"></div>' +
-      '<div class="analyzing-title">두 사람의 연애 데이터를 정밀 분석하는 중</div>' +
+      '<div class="analyzing-title">🔮 두 사람의 관계 기운을 정밀 분석하는 중</div>' +
       '<div class="analyzing-sub">궁합 패턴 · 감정 신호 · 관계 타이밍을 계산하고 있어요</div>' +
       "</div>";
 
     var payload = {
-      me: { n: me.n, mbti: me.mbti, s: me.s, characterName: chA.name },
-      partner: { n: partner.n, mbti: partner.mbti, s: partner.s, characterName: chB.name },
+      me: { n: me.n, mbti: me.mbti, s: me.s, characterName: chA.name, characterElement: chA.element },
+      partner: { n: partner.n, mbti: partner.mbti, s: partner.s, characterName: chB.name, characterElement: chB.element },
       compat: compat,
       signals: signals,
     };
@@ -201,7 +224,7 @@
           renderReportError(box, result.data, function () { unlockReport(me, chA, partner, chB, compat, signals); });
           return;
         }
-        renderReport(box, result.data.report);
+        renderReport(box, result.data.report, me.n || "나", partner.n || "상대");
       })
       .catch(function (err) {
         renderReportError(box, { message: err.message }, function () { unlockReport(me, chA, partner, chB, compat, signals); });
@@ -221,7 +244,13 @@
     document.getElementById("retryUnlock").addEventListener("click", onRetry);
   }
 
-  function renderReport(box, report) {
+  function renderMultilineHtml(text) {
+    var lines = String(text || "").split(/\n+/).map(function (l) { return l.trim(); }).filter(Boolean);
+    if (lines.length === 0) return '<p style="margin:0;">-</p>';
+    return lines.map(function (l) { return '<p style="margin:0 0 8px;">' + escapeHtml(l) + "</p>"; }).join("");
+  }
+
+  function renderReport(box, report, meName, partnerName) {
     var sections = [
       ["conflict_pattern", "🌀 반복되는 갈등 패턴"],
       ["attraction_reason", "✨ 서로에게 끌리는 이유"],
@@ -232,19 +261,30 @@
     ];
     box.className = "card";
     box.id = "";
-    box.innerHTML =
-      '<div class="report-done-badge">✅ 정밀 분석 완료</div>' +
-      sections
-        .map(function (s) {
-          var text = report && report[s[0]] ? report[s[0]] : "-";
-          return (
-            '<div style="margin-bottom:16px;">' +
-            '<div style="font-weight:800;font-size:14.5px;margin-bottom:5px;">' + s[1] + "</div>" +
-            '<div style="font-size:14px;color:var(--ink-2);line-height:1.6;">' + escapeHtml(text) + "</div>" +
-            "</div>"
-          );
-        })
-        .join("");
+
+    var sectionsHtml = sections
+      .map(function (s) {
+        var text = report && report[s[0]] ? report[s[0]] : "-";
+        return (
+          '<div class="report-section">' +
+          '<div class="report-section-title">' + s[1] + "</div>" +
+          '<div class="report-section-body">' + renderMultilineHtml(text) + "</div>" +
+          "</div>"
+        );
+      })
+      .join("");
+
+    var advice = report && report.personal_advice;
+    var adviceHtml = "";
+    if (advice && (advice.me || advice.partner)) {
+      adviceHtml =
+        '<div class="section-title" style="margin-top:6px;">💬 두 사람에게 보내는 한마디</div>' +
+        (advice.me ? '<div class="advice-bubble advice-me"><span class="advice-name">' + escapeHtml(meName) + "</span>" + escapeHtml(advice.me) + "</div>" : "") +
+        (advice.partner ? '<div class="advice-bubble advice-partner"><span class="advice-name">' + escapeHtml(partnerName) + "</span>" + escapeHtml(advice.partner) + "</div>" : "");
+    }
+
+    box.innerHTML = '<div class="report-done-badge">✅ 정밀 분석 완료</div>' + sectionsHtml;
+    if (adviceHtml) box.insertAdjacentHTML("afterend", adviceHtml);
   }
 
   function shareOrCopy(url, text) {
