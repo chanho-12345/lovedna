@@ -41,6 +41,12 @@
     return (name || "친구") + "님의 유형은 [" + ch.name + "]예요! 연인이든 썸이든 친구든, 케미 궁합이 궁금하면 👉 테스트 시작하기";
   }
 
+  function buildInviteUrl(code) {
+    // routes through /api/invite so KakaoTalk / iMessage link previews can
+    // show a per-person title instead of a generic one (see api/invite.js)
+    return location.origin + "/api/invite?p=" + encodeURIComponent(code);
+  }
+
   function statBarsHtml(stats) {
     return window.LoveDNA.STAT_KEYS
       .map(function (k) {
@@ -85,8 +91,7 @@
       '<p class="footer-note">본 테스트는 재미를 위한 콘텐츠이며 과학적 근거를 기반으로 하지 않습니다.</p>';
 
     document.getElementById("shareBtn").addEventListener("click", function () {
-      var url = location.origin + location.pathname.replace(/result\.html$/, "test.html") + "?partner=" + encodeURIComponent(dCode);
-      shareOrCopy(url, buildInviteText(me.n, ch));
+      shareOrCopy(buildInviteUrl(dCode), buildInviteText(me.n, ch), handleShareSuccess);
     });
     document.getElementById("saveCardBtn").addEventListener("click", function () {
       drawCard(me, ch);
@@ -105,6 +110,8 @@
     var chB = window.LoveDNA.assignCharacter(partner.s);
     var compat = window.LoveDNA.computeCompatibility(me.s, partner.s);
     var signals = window.LoveDNA.computeRiskSignals(me.s, partner.s, compat);
+    var room = me.room || partner.room || "";
+    var pairId = [dCode, pCode].sort().join("_");
 
     var radarSvg = window.LoveDNARadar.renderRadar({
       labels: window.LoveDNA.STAT_KEYS.map(function (k) { return window.LoveDNA.STAT_LABELS[k]; }),
@@ -150,6 +157,7 @@
       "</div>" +
       '<div class="score-big"><div class="num">' + compat.overall + "</div><div class=\"cap\">종합 궁합 점수 · " + pctToClosenessLabel(compat.overall) + "</div></div>" +
       "</div>" +
+      (room ? '<div class="section-title">🏆 우리 커플 순위</div><div class="card" id="leaderboardSection"><div class="lb-loading">순위 불러오는 중...</div></div>' : "") +
       '<div class="section-title">🗺️ 관계 지도</div>' +
       '<div class="card">' + radarSvg + "</div>" +
       '<div class="section-title">📈 세부 궁합 점수</div>' +
@@ -162,14 +170,15 @@
       '<div class="locked-teaser">' +
       '<div class="locked-teaser-text">왜 이 신호가 나타났는지, 이 시기에 무엇을 조심해야 하는지<br/>두 사람의 기운과 데이터를 정밀 분석한 리포트에서 확인하세요</div>' +
       '<div class="price-row" id="priceRow"><span class="price-tag" id="priceTag">3,900원</span></div>' +
+      '<div class="share-progress" id="shareProgress"></div>' +
       '<button class="btn btn-primary unlock-btn" id="unlockBtn">지금 정밀 분석 결과 확인하기</button>' +
-      '<button class="btn btn-ghost btn-sm" id="shareForDiscountBtn" style="margin-top:8px;">🔗 링크 공유하고 1,000원 할인받기</button>' +
-      '<div class="locked-note">🔒 결제 후 즉시 확인 가능</div>' +
+      '<button class="btn btn-ghost btn-sm" id="shareForDiscountBtn" style="margin-top:8px;">🔗 링크 공유하고 할인받기</button>' +
+      '<div class="locked-note">🔒 결제 후 즉시 확인 가능 · 공유 3회 시 무료</div>' +
       "</div>" +
       "</div>" +
       '<div class="section-title">🔗 내 캐릭터로 다른 친구도 초대하기</div>' +
       '<div class="card" style="text-align:center;">' +
-      '<p style="font-size:13.5px;color:var(--ink-2);margin-top:0;">' + escapeHtml(me.n || "나") + '님의 [' + chA.name + '] 결과로, 다른 친구나 썸 상대에게도 보내보세요.</p>' +
+      '<p style="font-size:13.5px;color:var(--ink-2);margin-top:0;">' + escapeHtml(me.n || "나") + '님의 [' + chA.name + '] 결과로, 다른 친구나 썸 상대에게도 보내보세요.<br/>공유할 때마다 내 리포트 할인이 쌓여요.</p>' +
       '<button class="btn btn-primary" id="inviteFriendBtn">🔗 내 링크로 친구 초대하기</button>' +
       '</div>' +
       '<div class="btn-row" style="margin-top:20px;"><a class="btn btn-ghost" href="./test.html">🔁 새로 테스트</a><button class="btn btn-ghost" id="shareResultBtn">이 결과 공유</button></div>' +
@@ -179,33 +188,116 @@
       unlockReport(me, chA, partner, chB, compat, signals);
     });
     document.getElementById("inviteFriendBtn").addEventListener("click", function () {
-      var url = location.origin + location.pathname.replace(/result\.html$/, "test.html") + "?partner=" + encodeURIComponent(dCode);
-      shareOrCopy(url, buildInviteText(me.n, chA));
+      shareOrCopy(buildInviteUrl(dCode), buildInviteText(me.n, chA), handleShareSuccess);
     });
     document.getElementById("shareResultBtn").addEventListener("click", function () {
-      shareOrCopy(location.href, "우리 궁합 결과 확인해봐 💘");
+      shareOrCopy(location.href, "우리 궁합 결과 확인해봐 💘", handleShareSuccess);
     });
     document.getElementById("shareForDiscountBtn").addEventListener("click", function () {
-      shareOrCopy(location.href, (me.n || "나") + "님이 LOVE DNA 궁합 결과를 보냈어요 💘");
-      setDiscountUnlocked();
-      updatePriceUI();
+      shareOrCopy(buildInviteUrl(dCode), buildInviteText(me.n, chA), handleShareSuccess);
     });
     updatePriceUI();
+
+    if (room) submitAndRenderLeaderboard(room, pairId, me, chA, partner, chB, compat.overall);
   }
 
-  function hasDiscountUnlocked() {
-    try { return localStorage.getItem("lovedna_shared_discount") === "1"; } catch (e) { return false; }
+  function submitAndRenderLeaderboard(room, pairId, me, chA, partner, chB, score) {
+    var box = document.getElementById("leaderboardSection");
+    if (!box) return;
+
+    fetch("./api/leaderboard", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({
+        room: room, pairId: pairId, score: score,
+        nameA: me.n, charA: chA.name, nameB: partner.n, charB: chB.name,
+      }),
+    })
+      .then(function () {
+        return fetch("./api/leaderboard?room=" + encodeURIComponent(room) + "&pair=" + encodeURIComponent(pairId));
+      })
+      .then(function (r) { return r.json().then(function (data) { return { ok: r.ok, data: data }; }); })
+      .then(function (result) {
+        if (!result.ok) { renderLeaderboardError(box, result.data); return; }
+        renderLeaderboard(box, result.data, pairId);
+      })
+      .catch(function () {
+        renderLeaderboardError(box, {});
+      });
   }
-  function setDiscountUnlocked() {
-    try { localStorage.setItem("lovedna_shared_discount", "1"); } catch (e) {}
+
+  function renderLeaderboardError(box, data) {
+    var msg = "순위를 불러오지 못했어요.";
+    if (data && data.error === "db_not_configured") msg = "랭킹 서버가 아직 준비되지 않았어요.";
+    box.innerHTML = '<div class="lb-loading">' + escapeHtml(msg) + "</div>";
+  }
+
+  function renderLeaderboard(box, data, myPairId) {
+    var top = (data && data.top) || [];
+    if (!top.length) {
+      box.innerHTML = '<div class="lb-loading">아직 이 링크로 궁합을 본 커플이 없어요. 첫 번째가 되어보세요!</div>';
+      return;
+    }
+    var medals = ["🥇", "🥈", "🥉"];
+    var rowsHtml = top
+      .map(function (row, i) {
+        var isMe = row.pairId === myPairId;
+        return (
+          '<div class="lb-row' + (isMe ? " lb-row-me" : "") + '">' +
+          '<div class="lb-rank">' + (medals[i] || i + 1 + "위") + "</div>" +
+          '<div class="lb-names">' + escapeHtml(row.nameA) + "(" + escapeHtml(row.charA) + ") × " + escapeHtml(row.nameB) + "(" + escapeHtml(row.charB) + ")" + (isMe ? " <b>← 우리</b>" : "") + "</div>" +
+          '<div class="lb-score">' + row.score + "점</div>" +
+          "</div>"
+        );
+      })
+      .join("");
+
+    var rankNote = "";
+    if (data.myRank) {
+      if (data.myRank > top.length) {
+        rankNote = '<div class="lb-my-rank">현재 우리 순위: ' + data.myRank + " / " + (data.total || "?") + "위</div>";
+      }
+    }
+
+    box.innerHTML =
+      '<div class="lb-list">' + rowsHtml + "</div>" +
+      rankNote +
+      '<div class="lb-total">이 링크에서 시작된 커플 총 ' + (data.total || top.length) + "쌍 중</div>";
+  }
+
+  // ---- share-to-unlock reward: no backend, so we can't verify a friend
+  // actually completed the test — instead we count the sharer's own
+  // *completed* shares (navigator.share() promise actually resolved, not
+  // just the button being clicked) and scale their own report discount.
+  function getShareCount() {
+    try { return parseInt(localStorage.getItem("lovedna_share_count") || "0", 10) || 0; } catch (e) { return 0; }
+  }
+  function incrementShareCount() {
+    var c = getShareCount() + 1;
+    try { localStorage.setItem("lovedna_share_count", String(c)); } catch (e) {}
+    return c;
+  }
+  function handleShareSuccess() {
+    var count = incrementShareCount();
+    if (count >= 3) toast("🎉 3회 공유 완료! 리포트가 무료로 열려요");
+    else toast("공유 완료! (" + count + "/3) " + (3 - count) + "번 더 공유하면 리포트 무료");
+    updatePriceUI();
   }
   function updatePriceUI() {
     var tag = document.getElementById("priceTag");
+    var progress = document.getElementById("shareProgress");
     if (!tag) return;
-    if (hasDiscountUnlocked()) {
-      tag.innerHTML = '<span class="price-strike">3,900원</span> <span class="price-now">2,900원</span> <span class="price-discount-badge">공유 할인 적용</span>';
+    var count = getShareCount();
+    if (count >= 3) {
+      tag.innerHTML = '<span class="price-strike">3,900원</span> <span class="price-now">무료</span> <span class="price-discount-badge">3회 공유 달성</span>';
+    } else if (count >= 1) {
+      var price = count >= 2 ? "1,900원" : "2,900원";
+      tag.innerHTML = '<span class="price-strike">3,900원</span> <span class="price-now">' + price + '</span> <span class="price-discount-badge">공유 ' + count + '회 할인</span>';
     } else {
       tag.textContent = "3,900원";
+    }
+    if (progress) {
+      progress.textContent = count >= 3 ? "" : "공유 " + count + "/3 · " + (3 - count) + "번 더 공유하면 무료예요";
     }
   }
 
@@ -300,13 +392,25 @@
     if (adviceHtml) box.insertAdjacentHTML("afterend", adviceHtml);
   }
 
-  function shareOrCopy(url, text) {
+  function shareOrCopy(url, text, onSuccess) {
     if (navigator.share) {
-      navigator.share({ title: "LOVE DNA", text: text, url: url }).catch(function () {});
+      // the promise only resolves if the user actually picked an app and
+      // completed the share sheet — it rejects (AbortError) on cancel, so
+      // this is a real "did they actually send it" signal, not just a click
+      navigator.share({ title: "LOVE DNA", text: text, url: url }).then(function () {
+        if (onSuccess) onSuccess();
+      }).catch(function () {});
     } else if (navigator.clipboard) {
-      navigator.clipboard.writeText(url).then(function () { toast("링크가 복사됐어요!"); });
+      // no share-sheet to confirm completion here, so we can't verify the
+      // link was actually sent anywhere — treat a successful copy as a
+      // good-faith "share" since it's the best signal this path has
+      navigator.clipboard.writeText(url).then(function () {
+        toast("링크가 복사됐어요!");
+        if (onSuccess) onSuccess();
+      });
     } else {
       window.prompt("아래 링크를 복사하세요:", url);
+      if (onSuccess) onSuccess();
     }
   }
 
