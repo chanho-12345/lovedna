@@ -149,8 +149,10 @@
   }
 
   function encodeResult(payload) {
-    // payload: {n: name, s: [ae,jl,in,cm,es,ca], c: characterKey, mbti: string}
-    var compact = [payload.n || "", payload.c, payload.mbti || "", payload.s.join(",")].join("|");
+    // payload: {n: name, s: [ae,jl,in,cm,es,ca], c: characterKey, mbti: string, room: string}
+    // "room" (5th field) is the viral-chain id used for the couple leaderboard —
+    // optional and backward-compatible: older links without it just decode room as "".
+    var compact = [payload.n || "", payload.c, payload.mbti || "", payload.s.join(","), payload.room || ""].join("|");
     return b64encode(compact);
   }
   function decodeResult(code) {
@@ -161,9 +163,10 @@
       var c = parts[1];
       var mbti = parts[2];
       var s = parts[3].split(",").map(function (x) { return parseInt(x, 10); });
+      var room = parts[4] || "";
       var stats = {};
       STAT_KEYS.forEach(function (k, i) { stats[k] = s[i]; });
-      return { n: n, c: c, mbti: mbti, s: stats };
+      return { n: n, c: c, mbti: mbti, s: stats, room: room };
     } catch (e) {
       return null;
     }
@@ -223,6 +226,16 @@
     return candidates.slice(0, 2).map(function (c) { return c.text; });
   }
 
+  // ---- viral-chain "room" id: whoever starts a fresh chain gets a new one;
+  // everyone who joins via an invite link inherits the same one, so the
+  // couple leaderboard groups "people who came from the same spreading link"
+  function generateRoomId() {
+    var chars = "abcdefghijklmnopqrstuvwxyz0123456789";
+    var id = "";
+    for (var i = 0; i < 8; i++) id += chars[Math.floor(Math.random() * chars.length)];
+    return id;
+  }
+
   var LoveDNA = {
     STAT_KEYS: STAT_KEYS,
     STAT_LABELS: STAT_LABELS,
@@ -234,6 +247,7 @@
     decodeResult: decodeResult,
     computeCompatibility: computeCompatibility,
     computeRiskSignals: computeRiskSignals,
+    generateRoomId: generateRoomId,
   };
 
   if (typeof module !== "undefined" && module.exports) {
