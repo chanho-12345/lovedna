@@ -270,6 +270,14 @@
       "</div>";
 
     app.innerHTML =
+      '<div class="char-card card">' +
+      '<div class="char-emoji">' + chA.emoji + "</div>" +
+      '<div class="char-type">' + chA.type + "</div>" +
+      '<div class="char-name">' + chA.name + "</div>" +
+      '<div class="char-desc">' + chA.desc + "</div>" +
+      '<div class="char-sub">' + escapeHtml(me.n || "나") + (me.mbti ? " · " + escapeHtml(me.mbti) : "") + " · " + chA.secondaryLabel + " 성향도 강한 편이에요 (" + chA.secondaryScore + "점)</div>" +
+      "</div>" +
+      '<div class="section-title">💞 우리 둘의 궁합은?</div>' +
       '<div class="card">' +
       '<div class="two-char">' +
       '<div class="who"><div class="e">' + chA.emoji + '</div><div class="n">' + escapeHtml(me.n || "나") + '<br/>' + chA.name + "</div></div>" +
