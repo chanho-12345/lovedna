@@ -338,7 +338,7 @@
       .then(function (r) { return r.json().then(function (data) { return { ok: r.ok, data: data }; }); })
       .then(function (result) {
         if (!result.ok) { renderLeaderboardError(box, result.data); return; }
-        renderLeaderboard(box, result.data, pairId, me.n, partner.n);
+        renderLeaderboard(box, result.data, pairId, me.n, partner.n, score, chA.name, chB.name);
       })
       .catch(function () {
         renderLeaderboardError(box, {});
@@ -351,19 +351,20 @@
     box.innerHTML = '<div class="lb-loading">' + escapeHtml(msg) + "</div>";
   }
 
-  function renderLeaderboard(box, data, myPairId, nameA, nameB) {
+  function renderLeaderboard(box, data, myPairId, nameA, nameB, myScore, myCharA, myCharB) {
     var top = (data && data.top) || [];
     if (!top.length) {
       box.innerHTML = '<div class="lb-loading">아직 궁합을 본 커플이 없어요. 첫 번째가 되어보세요!</div>';
       return;
     }
     var medals = ["🥇", "🥈", "🥉"];
+    var amInTop = top.some(function (row) { return row.pairId === myPairId; });
     var rowsHtml = top
       .map(function (row, i) {
         var isMe = row.pairId === myPairId;
         return (
           '<div class="lb-row' + (isMe ? " lb-row-me" : "") + '">' +
-          '<div class="lb-rank">' + (medals[i] || i + 1 + "위") + "</div>" +
+          '<div class="lb-rank">' + (medals[i] || (i + 1) + "위") + "</div>" +
           '<div class="lb-names">' + escapeHtml(row.nameA) + "(" + escapeHtml(row.charA) + ") × " + escapeHtml(row.nameB) + "(" + escapeHtml(row.charB) + ")" + (isMe ? " <b>← 우리</b>" : "") + "</div>" +
           '<div class="lb-score">' + Number(row.score).toFixed(2) + "점</div>" +
           "</div>"
@@ -371,16 +372,21 @@
       })
       .join("");
 
-    var rankNote = "";
-    if (data.myRank) {
-      if (data.myRank > top.length) {
-        rankNote = '<div class="lb-my-rank">현재 우리 순위: ' + data.myRank + " / " + (data.total || "?") + "위</div>";
-      }
+    // if we're outside the top 10, show a divider + our own rank/score row
+    // instead of listing every couple (keeps the card short once this goes viral)
+    var myRowHtml = "";
+    if (!amInTop && data.myRank && data.myRank > top.length) {
+      myRowHtml =
+        '<div class="lb-ellipsis">⋮</div>' +
+        '<div class="lb-row lb-row-me">' +
+        '<div class="lb-rank">' + data.myRank + "위</div>" +
+        '<div class="lb-names">' + escapeHtml(nameA) + "(" + escapeHtml(myCharA) + ") × " + escapeHtml(nameB) + "(" + escapeHtml(myCharB) + ") <b>← 우리</b></div>" +
+        '<div class="lb-score">' + Number(myScore).toFixed(2) + "점</div>" +
+        "</div>";
     }
 
     box.innerHTML =
-      '<div class="lb-list">' + rowsHtml + "</div>" +
-      rankNote +
+      '<div class="lb-list">' + rowsHtml + myRowHtml + "</div>" +
       '<div class="lb-total">LOVE DNA 전체 커플 총 ' + (data.total || top.length) + "쌍 중</div>" +
       '<button class="btn btn-ghost btn-sm" id="rankAlertBtn" style="margin-top:10px;">🔔 순위 알림 받기</button>';
 
