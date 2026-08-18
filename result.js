@@ -483,8 +483,20 @@
         (advice.partner ? '<div class="advice-bubble advice-partner"><span class="advice-name">' + escapeHtml(partnerName) + "</span>" + escapeHtml(advice.partner) + "</div>" : "");
     }
 
+    var elementTip = report && report.element_tip;
+    var elementTipHtml = "";
+    if (elementTip && (elementTip.me || elementTip.partner)) {
+      elementTipHtml =
+        '<div class="section-title" style="margin-top:6px;">🪬 기운을 보완하는 아이템</div>' +
+        '<div class="element-tip-card">' +
+        (elementTip.me ? '<div class="element-tip-row"><span class="element-tip-name">' + escapeHtml(meName) + "</span>" + escapeHtml(elementTip.me) + "</div>" : "") +
+        (elementTip.partner ? '<div class="element-tip-row"><span class="element-tip-name">' + escapeHtml(partnerName) + "</span>" + escapeHtml(elementTip.partner) + "</div>" : "") +
+        "</div>";
+    }
+
     box.innerHTML = '<div class="report-done-badge">✅ 정밀 분석 완료</div>' + sectionsHtml;
-    if (adviceHtml) box.insertAdjacentHTML("afterend", adviceHtml);
+    var afterBoxHtml = adviceHtml + elementTipHtml;
+    if (afterBoxHtml) box.insertAdjacentHTML("afterend", afterBoxHtml);
   }
 
   // ---- custom share sheet: 카카오톡 / 문자 / 페이스북 / 링크 복사 ----
