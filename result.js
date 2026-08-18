@@ -110,7 +110,7 @@
   }
 
   function buildChallengeText(name, score) {
-    return (name || "친구") + "님과의 궁합 점수는 " + score.toFixed(2) + "점! 나랑은 몇 점일까? 👉 도전하고 확인하기";
+    return (name || "친구") + "님과의 궁합 " + score.toFixed(2) + "점! 이거 못 이기실 걸요? 😏 자신있으면 도전 👉";
   }
 
   // ---- Web Push (rank alerts) ----
@@ -301,7 +301,7 @@
       '<div class="section-title">🔥 우리 궁합 점수, 자랑하고 도전시키기</div>' +
       '<div class="card" style="text-align:center;">' +
       '<div class="challenge-score">' + compat.overallPrecise.toFixed(2) + '점</div>' +
-      '<p style="font-size:13.5px;color:var(--ink-2);margin:6px 0 14px;">이 점수, 다른 친구들도 넘을 수 있을까요?<br/>링크 보내서 도전시켜보세요!</p>' +
+      '<p style="font-size:13.5px;color:var(--ink-2);margin:6px 0 14px;">이 점수, 내 친구들 중에 넘을 사람 있을까요? 😏<br/>도전장 보내서 확인시켜주세요!</p>' +
       '<button class="btn btn-primary" id="inviteFriendBtn">🔥 도전장 보내기</button>' +
       '</div>' +
       '<div class="btn-row" style="margin-top:20px;"><a class="btn btn-ghost" href="./test.html">🔁 새로 테스트</a><button class="btn btn-ghost" id="shareResultBtn">이 결과 공유</button></div>' +
