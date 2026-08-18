@@ -40,12 +40,12 @@
     stage.innerHTML =
       '<div class="q-index">STEP 1</div>' +
       '<div class="q-text">먼저 간단한 정보를 알려주세요</div>' +
-      '<div class="field"><label>이름 (이름이나 닉네임)</label><input id="f-name" type="text" placeholder="예: 김러브" maxlength="10"/></div>' +
+      '<div class="field"><label>이름 (이름이나 닉네임)</label><input id="f-name" type="text" placeholder="예: 김러브" maxlength="10" value="' + escapeHtml(info.name) + '"/></div>' +
       '<div class="field"><label>성별</label><div class="pill-group" id="f-gender">' +
         pill("male", "남성") + pill("female", "여성") + pill("other", "선택안함") +
       '</div></div>' +
-      '<div class="field"><label>생년월일</label><input id="f-birth" type="date"/></div>' +
-      '<div class="field"><label>MBTI</label><input id="f-mbti" type="text" placeholder="예: INFP" maxlength="4" style="text-transform:uppercase"/>' +
+      '<div class="field"><label>생년월일</label><input id="f-birth" type="date" value="' + escapeHtml(info.birth) + '"/></div>' +
+      '<div class="field"><label>MBTI</label><input id="f-mbti" type="text" placeholder="예: INFP" maxlength="4" style="text-transform:uppercase" value="' + escapeHtml(info.mbti) + '"/>' +
       '<div class="field-hint">🔮 사주 기반 분석에도 활용되니 생년월일·MBTI는 정확하게 입력해주세요!</div></div>' +
       '<div class="field"><label>현재 연애 상태</label><div class="pill-group" id="f-status">' +
         pill("solo", "솔로") + pill("some", "썸") + pill("dating", "연애 중") + pill("breakup", "이별") +
@@ -54,6 +54,14 @@
 
     bindPillGroup("f-gender", function (v) { info.gender = v; });
     bindPillGroup("f-status", function (v) { info.status = v; });
+    if (info.gender) {
+      var gBtn = document.querySelector('#f-gender .pill[data-value="' + info.gender + '"]');
+      if (gBtn) gBtn.classList.add("selected");
+    }
+    if (info.status) {
+      var sBtn = document.querySelector('#f-status .pill[data-value="' + info.status + '"]');
+      if (sBtn) sBtn.classList.add("selected");
+    }
 
     document.getElementById("f-next").addEventListener("click", function () {
       var name = document.getElementById("f-name").value.trim();
@@ -92,11 +100,15 @@
     var q = window.LoveDNA.QUESTIONS[qIdx];
     var optsHtml = q.options
       .map(function (opt, i) {
-        return '<button type="button" class="opt" data-score="' + i + '">' + opt + "</button>";
+        var isSelected = answers[qIdx] === i;
+        return '<button type="button" class="opt' + (isSelected ? " selected" : "") + '" data-score="' + i + '">' + opt + "</button>";
       })
       .join("");
     stage.innerHTML =
+      '<div class="q-top-row">' +
+      '<button type="button" class="q-back-btn" id="qBackBtn">← 이전</button>' +
       '<div class="q-index">Q' + step + ' / ' + window.LoveDNA.QUESTIONS.length + "</div>" +
+      "</div>" +
       '<div class="q-text">' + q.text + "</div>" +
       '<div class="opt-list">' + optsHtml + "</div>";
 
@@ -111,6 +123,16 @@
           finish();
         }
       });
+    });
+
+    document.getElementById("qBackBtn").addEventListener("click", function () {
+      step -= 1;
+      updateProgress();
+      if (step === 0) {
+        renderInfoForm();
+      } else {
+        renderQuestion();
+      }
     });
   }
 
