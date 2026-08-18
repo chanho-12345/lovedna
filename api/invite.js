@@ -33,9 +33,9 @@ module.exports = async function handler(req, res) {
     const ch = LoveDNA.assignCharacter(data.s);
     const name = data.n || "친구";
     if (score !== null) {
-      // this link came from a couple's compat page — frame it as a challenge
-      title = name + "님과의 궁합 점수는 " + score.toFixed(2) + "점!";
-      desc = "나랑은 몇 점일까? 지금 도전하고 확인해보세요 🔥";
+      // this link came from a couple's compat page — frame it as a taunt/challenge
+      title = name + "님과의 궁합 " + score.toFixed(2) + "점! 못 이기실 걸요? 😏";
+      desc = "자신 있으면 지금 바로 도전해서 확인해보세요 🔥";
     } else {
       title = name + "님의 유형은 [" + ch.name + "]예요!";
       desc = "연인이든 썸이든 친구든, 케미 궁합이 궁금하면 지금 테스트해보세요 💘";
