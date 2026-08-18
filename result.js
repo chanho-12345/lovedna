@@ -209,7 +209,8 @@
       '<button class="btn btn-primary" id="shareBtn">궁합 테스트 링크 공유하기 →</button>' +
       '<div class="btn-row"><button class="btn btn-ghost" id="saveCardBtn">🖼️ 캐릭터 카드 저장</button><a class="btn btn-ghost" href="./test.html">🔁 다시 테스트</a></div>' +
       "</div>" +
-      '<p class="footer-note">본 테스트는 재미를 위한 콘텐츠이며 과학적 근거를 기반으로 하지 않습니다.</p>';
+      '<p class="footer-note">본 테스트는 재미를 위한 콘텐츠이며 과학적 근거를 기반으로 하지 않습니다.</p>' +
+      '<p class="footer-links"><a href="./privacy.html">개인정보처리방침</a>·<a href="./terms.html">이용약관</a></p>';
 
     document.getElementById("shareBtn").addEventListener("click", function () {
       openShareSheet(buildInviteUrl(dCode), buildInviteText(me.n, ch), onShareDone);
@@ -305,7 +306,8 @@
       '<button class="btn btn-primary" id="inviteFriendBtn">🔥 도전장 보내기</button>' +
       '</div>' +
       '<div class="btn-row" style="margin-top:20px;"><a class="btn btn-ghost" href="./test.html">🔁 새로 테스트</a><button class="btn btn-ghost" id="shareResultBtn">이 결과 공유</button></div>' +
-      '<p class="footer-note">본 테스트는 재미를 위한 콘텐츠이며 과학적 근거를 기반으로 하지 않습니다.</p>';
+      '<p class="footer-note">본 테스트는 재미를 위한 콘텐츠이며 과학적 근거를 기반으로 하지 않습니다.</p>' +
+      '<p class="footer-links"><a href="./privacy.html">개인정보처리방침</a>·<a href="./terms.html">이용약관</a></p>';
 
     document.getElementById("unlockBtn").addEventListener("click", function () {
       unlockReport(me, chA, partner, chB, compat, signals);
